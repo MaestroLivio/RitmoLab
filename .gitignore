@@ -1,0 +1,33 @@
+# Dipendenze
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Compilazione
+dist/
+.build/
+.vite/
+*.local
+
+# Installer (i binari si distribuiscono tramite le Release GitHub,
+# non dentro il repository: si rigenerano con scripts/installers/build-all.sh)
+installers/**/*.dmg
+installers/**/*.pkg
+installers/**/*.exe
+installers/**/*.deb
+installers/**/*.zip
+
+# Sistema operativo
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# Log temporanei
+.vb2.log

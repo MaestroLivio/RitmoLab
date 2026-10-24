@@ -1,0 +1,50 @@
+{
+  "name": "ritmolab",
+  "version": "1.0.0",
+  "description": "RitmoLab - Laboratorio Desktop per l'Educazione Musicale nella Scuola Primaria",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/build-standalone-html.js",
+    "build:html": "vite build && node scripts/build-standalone-html.js",
+    "preview": "vite preview",
+    "electron:dev": "concurrently \"vite\" \"cross-env ELECTRON_DEV=true wait-on tcp:5173 && electron electron/main.cjs\"",
+    "electron:build": "vite build && electron-builder",
+    "main": "main.js",
+    "start": "electron ."
+  },
+  "keywords": [
+    "music",
+    "education",
+    "elementary",
+    "orff",
+    "kodaly",
+    "body-percussion",
+    "audio-synthesis"
+  ],
+  "author": "RitmoLab Team",
+  "license": "MIT",
+  "dependencies": {
+    "canvas-confetti": "^1.9.4",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.16.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^41.7.1",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^4.3.3",
+    "vite": "^6.0.7",
+    "wait-on": "^8.0.1"
+  }
+}

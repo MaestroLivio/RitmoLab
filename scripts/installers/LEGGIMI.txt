@@ -1,0 +1,42 @@
+RitmoLab - Laboratorio Musicale per la Scuola Primaria
+======================================================
+
+Grazie per aver installato RitmoLab!
+
+AVVIO
+-----
+Doppio clic sull'icona "RitmoLab" sul Desktop o nel menu Start.
+L'app si apre in una finestra dedicata, senza barra degli indirizzi.
+
+Requisiti: Windows 10 o 11 con Microsoft Edge (già incluso nel sistema)
+oppure Google Chrome. Non serve connessione a Internet: tutto funziona
+offline e nessun dato viene inviato all'esterno.
+
+CONTENUTO DELL'APP
+------------------
+- Percorso didattico: esercizi di ritmo, solfeggio e canto con spiegazione
+  e ascolto della versione corretta.
+- Laboratorio libero (DAW): crea partiture ritmiche e melodiche, salva e
+  riapri i tuoi lavori.
+- Gesti Kodály, body percussion e strumenti configurabili.
+- Modalità canto con verifica di intonazione e precisione ritmica.
+- Impostazioni: dimensione dei caratteri, strumenti attivi, modalità di
+  visualizzazione.
+
+MICROFONO
+---------
+Gli esercizi di canto chiedono il permesso di usare il microfono la prima
+volta. Il permesso resta memorizzato: se lo neghi per errore, riapri il
+pannello dei permessi del sito dall'icona accanto alla barra degli
+indirizzi e abilita il microfono.
+
+DISINSTALLAZIONE
+----------------
+Menu Start > RitmoLab > "Disinstalla RitmoLab".
+I file dell'app sono in: %LOCALAPPDATA%\RitmoLab
+
+NOTE
+----
+I profili dei browser usati dall'app sono salvati nella cartella
+"profile" dentro la cartella di installazione, così i dati di RitmoLab
+restano separati da quelli della normale navigazione.

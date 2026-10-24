@@ -1,0 +1,41 @@
+RitmoLab 1.0.0 - Installazione su ChromeOS / ChromeOS Flex
+=============================================================
+
+Ci sono tre modi per usare RitmoLab su un Chromebook. Scegli quello
+adatto al tuo dispositivo.
+
+--------------------------------------------------------------
+1) DOPPIO CLIC  ->  RitmoLab-ChromeOS.zip     (sempre possibile)
+--------------------------------------------------------------
+Estrai lo zip e fai doppio clic su RitmoLab.html.
+Funziona su qualunque Chromebook, anche senza Linux attivo.
+Per l'icona sulla shelf: nel browser, menu (tre puntini) >
+"Altri strumenti" > "Crea collegamento" e spunta "Apri come finestra".
+
+--------------------------------------------------------------
+2) APP INSTALLABILE  ->  RitmoLab-ChromeOS-PWA.zip
+--------------------------------------------------------------
+RitmoLab diventa una vera app con icona sulla shelf.
+Serve il Terminale Linux attivo (Impostazioni > Sviluppatori >
+Terminale Linux) oppure un computer con Python 3.
+Istruzioni complete dentro lo zip, file LEGGIMI.txt.
+
+--------------------------------------------------------------
+3) PACCHETTO LINUX  ->  RitmoLab-1.0.0-chromeos.deb
+--------------------------------------------------------------
+Per Chromebook con Linux attivo. Apre il Terminale Linux
+(Impostazioni > Sviluppatori > Terminale Linux) ed esegue:
+
+    sudo dpkg -i RitmoLab-1.0.0-chromeos.deb
+    sudo apt-get -f install        # solo se mancano dipendenze
+
+Al termine compare "RitmoLab" nel menu delle app Linux e sulla shelf.
+
+Per disinstallarlo:   sudo apt remove ritmolab
+
+--------------------------------------------------------------
+DIMENSIONE
+--------------------------------------------------------------
+L'app pesa circa .4 MB e contiene già tutto: audio, grafica,
+stili e codice. Non serve Internet, né dopo l'installazione né durante
+l'uso. Nessun dato viene inviato all'esterno.

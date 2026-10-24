@@ -1,0 +1,124 @@
+# RitmoLab — Installer
+
+Questa cartella contiene gli installer di **RitmoLab** per macOS, Windows e
+ChromeOS / ChromeOS Flex. Tutti i pacchetti includono l'app completa:
+funzionano **offline**, senza connessione a Internet e senza installare
+runtime aggiuntivi.
+
+## Quale file scaricare
+
+| Sistema | File | Come si usa |
+|---|---|---|
+| **macOS** (Apple Silicon e Intel) | `macOS/RitmoLab-1.0.0-macOS.dmg` | Apri il DMG, trascina RitmoLab in *Applicazioni*. |
+| **macOS** (alternativa) | `macOS/RitmoLab-1.0.0-macOS.pkg` | Doppio clic e segui la procedura guidata. |
+| **Windows 10 / 11** | `Windows/RitmoLab-1.0.0-Windows-Setup.exe` | Doppio clic, *Avanti*, *Installa*. |
+| **ChromeOS / Flex** (sempre) | `ChromeOS/RitmoLab-ChromeOS.zip` | Estrai e fai doppio clic su `RitmoLab.html`. |
+| **ChromeOS** con Linux attivo | `ChromeOS/RitmoLab-1.0.0-chromeos.deb` | `sudo dpkg -i RitmoLab-1.0.0-chromeos.deb` |
+| **ChromeOS / Flex** (app sulla shelf) | `ChromeOS/RitmoLab-ChromeOS-PWA.zip` | Estrai e segui il `LEGGIMI.txt` incluso. |
+
+> [!TIP]
+> Se non sai quale scegliere su un Chromebook, usa `RitmoLab-ChromeOS.zip`:
+> funziona sempre, non richiede permessi speciali e non necessita di Linux.
+
+## Cosa fa l'installer
+
+Gli installer non installano un motore grafico separato: creano un **launcher**
+che apre RitmoLab in una **finestra dedicata** (senza barra degli indirizzi)
+usando un browser già presente sul computer.
+
+- **macOS**: apre Chrome, Edge, Brave, Chromium, Vivaldi, Arc o Opera, in
+  quest'ordine. Se non ne trova nessuno, usa il browser predefinito.
+- **Windows**: apre Microsoft Edge (già incluso in Windows 10/11) oppure
+  Chrome, Brave o Vivaldi.
+- **ChromeOS**: la versione `.deb` avvia un piccolo server locale e apre
+  l'app in modalità finestra con il primo browser Chromium disponibile.
+
+Ogni installazione usa un **profilo separato**, così i dati di RitmoLab
+(permessi del microfono, preferenze) restano distinti dalla normale
+navigazione.
+
+## Microfono
+
+Gli esercizi di canto verificano intonazione e precisione ritmica: al primo
+uso il browser chiede il permesso del microfono. Il permesso resta memorizzato
+nel profilo dedicato di RitmoLab. Se viene negato per errore, si riabilita
+dall'icona accanto alla barra degli indirizzi.
+
+## Ricompilare gli installer
+
+```bash
+# tutti i pacchetti
+bash scripts/installers/build-all.sh
+
+# solo una piattaforma
+bash scripts/installers/build-all.sh macos
+bash scripts/installers/build-all.sh windows
+bash scripts/installers/build-all.sh chromeos
+```
+
+Prerequisiti:
+
+- Node.js e `npm install` già eseguito nel progetto
+- **NSIS** per l'installer Windows: `brew install makensis`
+- **Xcode Command Line Tools** per macOS: `sips`, `iconutil`, `codesign`,
+  `pkgbuild`, `hdiutil`
+
+`build-all.sh` ricompila prima l'app (Vite + `scripts/build-standalone-html.js`)
+e poi impacchetta il risultato. Se `RitmoLab.html` nella cartella principale è
+già aggiornato, si può saltare la ricompilazione e impacchettare direttamente:
+
+```bash
+SKIP_BUILD=1 bash scripts/installers/build-all.sh
+SKIP_BUILD=1 bash scripts/installers/build-all.sh windows   # solo Windows
+```
+
+Con `SKIP_BUILD=1` il file `RitmoLab.html` viene usato così com'è: nessun
+accesso alla rete, nessuna dipendenza da `node_modules`.
+
+> [!NOTE]
+> La creazione del DMG richiede `hdiutil`, che su macOS recenti necessita di
+> permessi estesi. Se lo script non riesce a crearlo, stampa il comando da
+> eseguire manualmente, ad esempio:
+>
+> ```bash
+> hdiutil create -volname "RitmoLab 1.0.0" -srcfolder .build/macos/dmg-stage \
+>   -ov -format UDZO installers/macOS/RitmoLab-1.0.0-macOS.dmg
+> ```
+
+> [!IMPORTANT]
+> Se `npm run build` si blocca su `transforming...`, è un problema
+> dell'ambiente di compilazione, non del codice. In quel caso impacchetta il
+> `RitmoLab.html` già presente con `SKIP_BUILD=1`, oppure esegui
+> `npm run build` su una macchina con `node_modules` installato
+> correttamente e poi rilancia gli script degli installer.
+
+## Struttura del progetto
+
+```
+scripts/installers/
+├── build-all.sh           # compila tutto
+├── build-macos.sh         # .app + .pkg + cartella per il DMG
+├── build-windows.sh       # .exe con NSIS
+├── build-chromeos.sh      # .zip autonomo + .zip PWA + .deb
+├── make-icons.mjs         # genera le icone (PNG e ICO) senza dipendenze
+├── make-pwa.mjs           # trasforma l'HTML in una pagina installabile
+├── ritmolab-windows.nsi   # script dell'installer Windows
+├── LEGGIMI.txt            # istruzioni incluse nell'installer Windows
+└── ritmolab.desktop       # voce di menu Linux (generata dallo script)
+```
+
+I file prodotti finiscono in `installers/macOS`, `installers/Windows` e
+`installers/ChromeOS`. Le cartelle temporanee di compilazione sono in
+`.build/` e possono essere cancellate in qualsiasi momento.
+
+## Firma del codice
+
+I pacchetti macOS sono firmati **ad-hoc**: si aprono normalmente sul computer
+che li ha generati e su quelli in cui l'utente autorizza l'app al primo avvio
+(*Impostazioni di Sistema > Privacy e sicurezza > Apri comunque*). Per una
+distribuzione senza avvisi serve un certificato Apple Developer ID e la
+notarizzazione.
+
+L'installer Windows non è firmato: SmartScreen può mostrare un avviso al primo
+avvio. Si prosegue con *Ulteriori informazioni > Esegui comunque*. Per
+eliminare l'avviso serve un certificato di firma del codice.
