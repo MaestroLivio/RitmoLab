@@ -4,6 +4,24 @@
 
 ---
 
+## 📥 Scarica RitmoLab
+
+Gli installer sono allegati alla **[release 1.0.0](https://github.com/MaestroLivio/RitmoLab/releases/latest)**. Sono **eseguibili autonomi**: contengono tutto il necessario e funzionano offline, senza browser installato.
+
+| Sistema | File |
+|---|---|
+| **macOS** Apple Silicon | `RitmoLab-1.0.0-macOS-arm64.dmg` |
+| **macOS** Intel | `RitmoLab-1.0.0-macOS-x64.dmg` |
+| **Windows 10 / 11** | `RitmoLab-1.0.0-Windows-x64.exe` |
+| **Windows** portable | `RitmoLab-1.0.0-Windows-Portable.exe` |
+| **Linux** | `RitmoLab-1.0.0-Linux-x86_64.AppImage` |
+| **Linux** (Debian/Ubuntu) | `RitmoLab-1.0.0-Linux-amd64.deb` |
+| **ChromeOS / Flex** | `RitmoLab-ChromeOS.zip` (doppio clic su `RitmoLab.html`) |
+
+Al primo avvio macOS e Windows mostrano un avviso di sicurezza, perché i pacchetti non sono firmati con certificati commerciali. Istruzioni dettagliate in [`installers/LEGGIMI.txt`](installers/LEGGIMI.txt).
+
+---
+
 ## 🌟 Caratteristiche Principali
 
 ### 1. Workspace Ibrido DAW + Notazione Musicale
@@ -119,7 +137,24 @@ Per visualizzare l'anteprima del build di produzione:
 npm run preview
 ```
 
-### 5. Esecuzione Test Automatici
+### 5. Creazione degli Installer
+
+Gli eseguibili autonomi per macOS, Windows e Linux si generano con un solo comando:
+
+```bash
+bash scripts/installers/build-electron.sh              # tutte le piattaforme
+bash scripts/installers/build-electron.sh macos        # solo macOS
+SKIP_BUILD=1 bash scripts/installers/build-electron.sh # riusa RitmoLab.html
+```
+
+I pacchetti finiscono in `installers/`. Per pubblicarli:
+
+```bash
+gh release upload v1.0.0 installers/macOS/*.dmg installers/Windows/*.exe \
+  installers/Linux/*.AppImage installers/Linux/*.deb --clobber
+```
+
+### 6. Esecuzione Test Automatici
 Per verificare l'integrità del curriculum a 88 livelli, la precisione in millisecondi del `RhythmEvaluator` e la persistenza:
 ```bash
 node src/tests/curriculum-evaluator.test.js
