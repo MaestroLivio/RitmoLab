@@ -52,19 +52,24 @@ const KEYBOARD_RHYTHM_MAP = {
 const ALL_PITCH_KEYS = ['DO', 'RE', 'MI', 'FA', 'SOL', 'LA', 'SI', 'DO_HIGH'];
 
 // Vertical Y coordinates for Pentagram Staff (5 lines + ledger line for Do4)
+// Shifted down to give the staff comfortable headroom at the top and bottom so
+// note stems and the ledger-line Do never clip against the container edges.
 const PITCH_STAFF_Y = {
-  'FA_HIGH': 34, 'F5': 34,
-  'MI_HIGH': 46, 'E5': 46,
-  'RE_HIGH': 58, 'D5': 58,
-  'DO_HIGH': 70, 'C5': 70,
-  'SI': 82, 'B4': 82,
-  'LA': 94, 'A4': 94,
-  'SOL': 106, 'G4': 106,
-  'FA': 118, 'F4': 118,
-  'MI': 130, 'E4': 130,
-  'RE': 142, 'D4': 142,
-  'DO': 154, 'C4': 154, // Ledger line below
+  'FA_HIGH': 48, 'F5': 48,
+  'MI_HIGH': 60, 'E5': 60,
+  'RE_HIGH': 72, 'D5': 72,
+  'DO_HIGH': 84, 'C5': 84,
+  'SI': 96, 'B4': 96,
+  'LA': 108, 'A4': 108,
+  'SOL': 120, 'G4': 120,
+  'FA': 132, 'F4': 132,
+  'MI': 144, 'E4': 144,
+  'RE': 156, 'D4': 156,
+  'DO': 168, 'C4': 168, // Ledger line below
 };
+
+// The 5 staff lines (E4, G4, B4, D5, F5) 24px apart, matching PITCH_STAFF_Y.
+const STAFF_LINES = [48, 72, 96, 120, 144];
 
 // Vertical Y coordinates for Rhythmic Tracks
 const RHYTHM_TRACK_Y = {
@@ -574,27 +579,27 @@ export default function RhythmTapGame({
           </div>
         )}
 
-        {gameState === 'counting' && (
-          <div className="text-center animate-bounce-short my-auto">
-            <div className="text-sm font-bold text-amber-800 uppercase tracking-widest mb-3">
-              {isMelodic && inputMode === 'singing'
-                ? "🎶 Prendi l'intonazione e ascolta il metronomo..."
-                : "Ascolta il conteggio del metronomo..."}
-            </div>
-            <div className="w-36 h-36 bg-amber-400 text-amber-950 font-black text-7xl rounded-full flex items-center justify-center shadow-playful border-4 border-amber-300 mx-auto">
-              {countInBeat}
-            </div>
-            {isMelodic && (
-              <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-purple-100 border border-purple-300 rounded-full text-xs font-black text-purple-900">
-                <span>Nota di partenza: <strong>{level?.targetNotes?.find(n => !n.isRest && n.pitch)?.pitch || 'DO'}</strong> 🔔</span>
+        {(gameState === 'playing' || gameState === 'counting') && (
+          <div className="w-full max-w-3xl flex flex-col items-center my-auto relative">
+            {/* Countdown badge during count-in: the whole game stage is already
+                visible so pupils can spot the hit zone and the input buttons
+                before the metronome count finishes. */}
+            {gameState === 'counting' && (
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center animate-bounce-short">
+                <div className="text-xs font-black text-amber-800 uppercase tracking-widest mb-1.5 whitespace-nowrap px-3 py-1 bg-white/95 rounded-full border border-amber-200 shadow-xs">
+                  {isMelodic && inputMode === 'singing'
+                    ? "🎶 Prendi l'intonazione e preparati..."
+                    : 'Ascolta il conteggio del metronomo...'}
+                </div>
+                <div className="w-24 h-24 bg-amber-400 text-amber-950 font-black text-6xl rounded-full flex items-center justify-center shadow-playful border-4 border-amber-300">
+                  {countInBeat}
+                </div>
+                <div className="mt-2 text-[11px] font-black text-slate-700 bg-white/95 px-3 py-1 rounded-full border border-amber-200 shadow-xs whitespace-nowrap">
+                  👀 Le note arrivano qui: al via suona a ritmo!
+                </div>
               </div>
             )}
-            <div className="mt-3 text-xs font-semibold text-slate-600">Preparati a suonare!</div>
-          </div>
-        )}
 
-        {gameState === 'playing' && (
-          <div className="w-full max-w-3xl flex flex-col items-center my-auto">
             {/* Combo & Live Feedback */}
             <div className="h-16 flex flex-col items-center justify-center mb-3">
               {recentTapFeedback && (
@@ -756,11 +761,11 @@ export default function RhythmTapGame({
             )}
 
             {/* MUSICAL STAFF HIGHWAY - Authentic Staff with Scrolling Notes */}
-            <div className="w-full h-56 bg-[#FDFBF7] rounded-3xl border-2 border-amber-200 shadow-playful-sm relative overflow-hidden px-4 mb-5 select-none">
+            <div className="w-full h-60 bg-[#FDFBF7] rounded-3xl border-2 border-amber-200 shadow-playful-sm relative overflow-hidden px-4 mb-5 select-none">
               {isMelodic ? (
                 <>
-                  {/* Pentagram 5 Staff Lines: [34, 58, 82, 106, 130] */}
-                  {[34, 58, 82, 106, 130].map((yLine, idx) => (
+                  {/* Pentagram 5 Staff Lines: [48, 72, 96, 120, 144] */}
+                  {STAFF_LINES.map((yLine, idx) => (
                     <div
                       key={idx}
                       className="absolute left-0 right-0 h-[2px] bg-slate-400/80 pointer-events-none"
@@ -777,7 +782,7 @@ export default function RhythmTapGame({
                   </span>
 
                   {/* Vertical bar line dividing clef */}
-                  <div className="absolute left-[58px] top-[34px] bottom-[78px] w-[1px] bg-slate-300 pointer-events-none" />
+                  <div className="absolute left-[58px] top-[48px] bottom-[96px] w-[1px] bg-slate-300 pointer-events-none" />
                 </>
               ) : (
                 /* Rhythmic Body Percussion Tracks */
@@ -822,7 +827,7 @@ export default function RhythmTapGame({
                   className="absolute z-25 transition-all duration-75 flex items-center pointer-events-none"
                   style={{
                     left: '62px',
-                    top: `${(PITCH_STAFF_Y[livePitch.solfegeKey] ?? 106) - 14}px`,
+                    top: `${(PITCH_STAFF_Y[livePitch.solfegeKey] ?? 120) - 14}px`,
                   }}
                 >
                   <div
@@ -847,10 +852,10 @@ export default function RhythmTapGame({
 
                 if (isMelodic) {
                   const pitchKey = (beat.pitch || 'SOL').toUpperCase();
-                  const topY = PITCH_STAFF_Y[pitchKey] ?? 106;
+                  const topY = PITCH_STAFF_Y[pitchKey] ?? 120;
                   const solfegeMeta = SOLFEGE_MAP[pitchKey] || { label: beat.pitch, color: '#38BDF8' };
                   const isMiddleC = pitchKey === 'DO' || pitchKey === 'C4';
-                  const isAboveMiddle = topY < 82; // Notes above middle line Si4 have stem down
+                  const isAboveMiddle = topY < 96; // Notes above middle line Si4 have stem down
 
                   return (
                     <div
@@ -861,6 +866,11 @@ export default function RhythmTapGame({
                         top: `${topY - 14}px`,
                       }}
                     >
+                      {/* Kodály hand sign badge to the left of each notehead */}
+                      <div className="absolute -left-7 top-1/2 -translate-y-1/2 z-20">
+                        <KodalyHandSign pitch={pitchKey} size="sm" />
+                      </div>
+
                       {/* Ledger line for Middle Do (C4) */}
                       {isMiddleC && (
                         <div className="absolute -left-2 -right-2 top-1/2 -translate-y-1/2 h-[2px] bg-slate-800 pointer-events-none z-0" />

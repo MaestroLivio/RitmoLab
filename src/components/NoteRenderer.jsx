@@ -20,6 +20,30 @@ export const SOUND_COLORS = {
   cymbals: { bg: '#22D3EE', border: '#0891B2', text: '#164E63', label: 'Piatti', icon: '🪙' },
 };
 
+// Staff position indices (bottom C4 = 0 … top F5 = 10). Middle line B4 = 6.
+const SCIENTIFIC_STAFF_INDEX = {
+  'C4': 0, 'D4': 1, 'E4': 2, 'F4': 3, 'G4': 4, 'A4': 5, 'B4': 6,
+  'C5': 7, 'D5': 8, 'E5': 9, 'F5': 10,
+};
+const SOLFEGE_STAFF_INDEX = {
+  'DO': 0, 'RE': 1, 'MI': 2, 'FA': 3, 'SOL': 4, 'LA': 5, 'SI': 6,
+  'DO_HIGH': 7, 'RE_HIGH': 8, 'MI_HIGH': 9, 'FA_HIGH': 10,
+};
+
+/**
+ * Resolves a pitch (solfege key or scientific name) to its staff index,
+ * or null when unknown. Used to compute the correct stem direction.
+ */
+function getStaffPitchIndex(pitch) {
+  if (!pitch) return null;
+  const p = String(pitch).toUpperCase().trim();
+  if (SCIENTIFIC_STAFF_INDEX[p] !== undefined) return SCIENTIFIC_STAFF_INDEX[p];
+  if (SOLFEGE_STAFF_INDEX[p] !== undefined) return SOLFEGE_STAFF_INDEX[p];
+  const meta = SOLFEGE_MAP[p];
+  if (meta && SCIENTIFIC_STAFF_INDEX[meta.note] !== undefined) return SCIENTIFIC_STAFF_INDEX[meta.note];
+  return null;
+}
+
 export default function NoteRenderer({
   note,
   viewMode = 'blocks', // 'blocks' | 'conventional'
@@ -107,8 +131,10 @@ export default function NoteRenderer({
   const isEighth = note.duration === 2;
   const isSixteenth = note.duration <= 1;
 
-  // Stem height: ~35px upward
-  const stemUp = true;
+  // Correct stem direction: notes below the middle line (B4) get an upward stem,
+  // notes on or above it get a downward stem (standard notation convention).
+  const staffIdx = getStaffPitchIndex(note.pitch);
+  const stemUp = staffIdx === null ? true : staffIdx < 6;
   const headColor = isRest ? '#64748B' : (solfegeMeta?.color || '#1E293B');
 
   return (
@@ -143,15 +169,15 @@ export default function NoteRenderer({
             )}
           </div>
         ) : (
-          <svg viewBox="0 0 40 50" className="w-10 h-12 overflow-visible">
+          <svg viewBox="0 0 40 56" className="w-10 h-14 overflow-visible">
             {/* Accidental prefix if present */}
             {note.accidental === 1 && (
-              <text x="-12" y="28" className="text-lg font-black fill-slate-800">
+              <text x="-12" y="30" className="text-lg font-black fill-slate-800">
                 ♯
               </text>
             )}
             {note.accidental === -1 && (
-              <text x="-10" y="26" className="text-lg font-black fill-slate-800">
+              <text x="-10" y="28" className="text-lg font-black fill-slate-800">
                 ♭
               </text>
             )}
@@ -159,10 +185,10 @@ export default function NoteRenderer({
             {/* Notehead: tilted ellipse */}
             <ellipse
               cx="16"
-              cy="25"
+              cy="28"
               rx="9"
               ry="6"
-              transform="rotate(-20 16 25)"
+              transform="rotate(-20 16 28)"
               fill={isWhole || isHalf ? '#FFFFFF' : headColor}
               stroke="#1E293B"
               strokeWidth="2.5"
@@ -171,10 +197,10 @@ export default function NoteRenderer({
             {/* Note Stem (Not needed for Whole note) */}
             {!isWhole && (
               <line
-                x1="23"
-                y1="23"
-                x2="23"
-                y2="2"
+                x1={stemUp ? 23 : 9}
+                y1={stemUp ? 26 : 30}
+                x2={stemUp ? 23 : 9}
+                y2={stemUp ? 4 : 52}
                 stroke="#1E293B"
                 strokeWidth="2.5"
                 strokeLinecap="round"
@@ -182,26 +208,53 @@ export default function NoteRenderer({
             )}
 
             {/* Flags for Eighth (♪) and Sixteenth (♬) */}
-            {isEighth && (
+            {isEighth && stemUp && (
               <path
-                d="M 23 2 C 28 8, 32 14, 28 20"
+                d="M 23 4 C 28 10, 32 16, 28 22"
                 fill="none"
                 stroke="#1E293B"
                 strokeWidth="2.5"
                 strokeLinecap="round"
               />
             )}
-            {isSixteenth && (
+            {isEighth && !stemUp && (
+              <path
+                d="M 9 52 C 4 46, 0 40, 4 34"
+                fill="none"
+                stroke="#1E293B"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            )}
+            {isSixteenth && stemUp && (
               <>
                 <path
-                  d="M 23 2 C 28 8, 32 14, 28 18"
+                  d="M 23 4 C 28 10, 32 16, 28 20"
                   fill="none"
                   stroke="#1E293B"
                   strokeWidth="2.5"
                   strokeLinecap="round"
                 />
                 <path
-                  d="M 23 8 C 28 14, 32 20, 28 24"
+                  d="M 23 10 C 28 16, 32 22, 28 26"
+                  fill="none"
+                  stroke="#1E293B"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+              </>
+            )}
+            {isSixteenth && !stemUp && (
+              <>
+                <path
+                  d="M 9 52 C 4 46, 0 40, 4 36"
+                  fill="none"
+                  stroke="#1E293B"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M 9 46 C 4 40, 0 34, 4 30"
                   fill="none"
                   stroke="#1E293B"
                   strokeWidth="2.5"
