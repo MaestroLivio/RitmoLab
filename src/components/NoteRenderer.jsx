@@ -49,13 +49,14 @@ export default function NoteRenderer({
   viewMode = 'blocks', // 'blocks' | 'conventional'
   stepWidth = 24,       // pixel width per 16th note
   rowHeight = 36,       // pixel height per pitch/sound row
+  indent = 0,           // left gutter (px) reserved for clef + time signature
   showChironomy = true,
   isSelected = false,
   onSelect = null,
   onDelete = null,
 }) {
   const widthPx = Math.max(stepWidth * (note.duration || 4) - 4, 18);
-  const leftPx = note.step * stepWidth;
+  const leftPx = indent + note.step * stepWidth;
   const isRest = !!note.isRest;
 
   // Sound style for percussion

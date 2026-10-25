@@ -60,6 +60,7 @@ export default function StaffRenderer({
   totalSteps = 16,
   timeSignature = '4/4',
   trackIndex = 0,
+  indent = 0, // left gutter (px) reserved for clef + time signature
 }) {
   const getSixteenthsPerBar = (ts) => {
     switch (ts) {
@@ -72,13 +73,13 @@ export default function StaffRenderer({
   };
 
   const sixteenthsPerBar = getSixteenthsPerBar(timeSignature);
-  const totalWidthPx = totalSteps * stepWidth;
+  const totalWidthPx = indent + totalSteps * stepWidth;
   const barsCount = Math.ceil(totalSteps / sixteenthsPerBar);
 
-  // Measure bar lines
+  // Measure bar lines (offset by the clef gutter)
   const barLinePositions = [];
   for (let b = 1; b <= barsCount; b++) {
-    barLinePositions.push(b * sixteenthsPerBar * stepWidth);
+    barLinePositions.push(indent + b * sixteenthsPerBar * stepWidth);
   }
 
   // Beat subdivision lines
@@ -86,7 +87,7 @@ export default function StaffRenderer({
   const beatLinePositions = [];
   for (let s = beatStep; s < totalSteps; s += beatStep) {
     if (s % sixteenthsPerBar !== 0) {
-      beatLinePositions.push(s * stepWidth);
+      beatLinePositions.push(indent + s * stepWidth);
     }
   }
 
@@ -101,7 +102,7 @@ export default function StaffRenderer({
           <div
             key={`step-${stepIdx}`}
             className="absolute top-0 bottom-0 border-r border-slate-100"
-            style={{ left: `${stepIdx * stepWidth}px`, width: `${stepWidth}px` }}
+            style={{ left: `${indent + stepIdx * stepWidth}px`, width: `${stepWidth}px` }}
           />
         ))}
 
@@ -167,14 +168,20 @@ export default function StaffRenderer({
             className="relative flex items-center border-b border-slate-100/60 transition-colors"
             style={{ height: `${rowHeight}px` }}
           >
-            {/* The Musical Staff Horizontal Line */}
+            {/* The Musical Staff Horizontal Line (starts after the clef gutter) */}
             {isLine && (
-              <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] bg-slate-700/80 pointer-events-none z-0" />
+              <div
+                className="absolute top-1/2 -translate-y-1/2 h-[2px] bg-slate-700/80 pointer-events-none z-0"
+                style={{ left: `${indent}px`, right: 0 }}
+              />
             )}
 
             {/* Ledger Line for Middle C (Do4) */}
             {isLedger && (
-              <div className="absolute inset-0 flex items-center pointer-events-none z-0">
+              <div
+                className="absolute flex items-center pointer-events-none z-0"
+                style={{ left: `${indent}px`, right: 0, top: 0, bottom: 0 }}
+              >
                 {/* Visual faint dashed guide */}
                 <div className="w-full h-[1px] border-b border-dashed border-slate-300" />
               </div>

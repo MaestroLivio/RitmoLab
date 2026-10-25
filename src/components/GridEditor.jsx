@@ -134,6 +134,11 @@ export default function GridEditor({
     ? (sandboxMode === 'rhythm' ? 'single' : sandboxStaff)
     : (isMelodic && forcePentagramStaff ? 'pentagram' : (levelConfig?.staffType || 'single'));
 
+  // Left gutter reserved for clef + time signature, so notes/bar lines
+  // start AFTER them in conventional notation instead of overlapping.
+  const showClef = staffType === 'pentagram' || staffType === 'dual';
+  const staffIndent = showClef ? 72 : 0;
+
   const activeRows = React.useMemo(() => {
     if (isSandbox) {
       if (sandboxMode === 'rhythm') {
@@ -319,7 +324,7 @@ export default function GridEditor({
     if (!targetEl) return null;
     const rect = targetEl.getBoundingClientRect();
 
-    const relX = clientX - rect.left;
+    const relX = clientX - rect.left - staffIndent;
     const relY = clientY - rect.top;
 
     if (relX < 0 || relY < 0) return null;
@@ -992,13 +997,13 @@ export default function GridEditor({
           {/* Timeline numbers (Top bar of grid) */}
           <div
             className="h-8 border-b-2 border-amber-200 bg-amber-50/50 flex relative select-none sticky top-0 z-20"
-            style={{ width: `${totalSteps * stepWidth}px` }}
+            style={{ width: `${staffIndent + totalSteps * stepWidth}px` }}
           >
             {Array.from({ length: totalBars }).map((_, barIdx) => (
               <div
                 key={`bar-head-${barIdx}`}
                 className="absolute top-0 bottom-0 border-r-2 border-slate-700 flex items-center px-2 text-xs font-black text-amber-900"
-                style={{ left: `${barIdx * sixteenthsPerBar * stepWidth}px`, width: `${sixteenthsPerBar * stepWidth}px` }}
+                style={{ left: `${staffIndent + barIdx * sixteenthsPerBar * stepWidth}px`, width: `${sixteenthsPerBar * stepWidth}px` }}
               >
                 <span>Battuta {barIdx + 1}</span>
                 <span className="ml-auto text-[10px] text-amber-700/70 font-bold">{timeSignature}</span>
@@ -1011,7 +1016,7 @@ export default function GridEditor({
             ref={staffAreaRef}
             onClick={handleGridClick}
             className="relative cursor-crosshair"
-            style={{ width: `${totalSteps * stepWidth}px` }}
+            style={{ width: `${staffIndent + totalSteps * stepWidth}px` }}
           >
             <StaffRenderer
               staffType={staffType}
@@ -1020,6 +1025,7 @@ export default function GridEditor({
               rowHeight={rowHeight}
               totalSteps={totalSteps}
               timeSignature={timeSignature}
+              indent={staffIndent}
             />
 
             {/* Ghost Snap preview when hovering/dragging */}
@@ -1027,7 +1033,7 @@ export default function GridEditor({
               <div
                 className="absolute pointer-events-none rounded-xl border-2 border-dashed border-purple-500 bg-purple-300/30 transition-all z-20"
                 style={{
-                  left: `${ghostSnap.step * stepWidth}px`,
+                  left: `${staffIndent + ghostSnap.step * stepWidth}px`,
                   top: `${ghostSnap.rowIdx * rowHeight + 2}px`,
                   width: `${(FIGURE_DURATIONS[selectedFigure] || 4) * stepWidth - 4}px`,
                   height: `${rowHeight - 4}px`,
@@ -1058,6 +1064,7 @@ export default function GridEditor({
                     viewMode={viewMode}
                     stepWidth={stepWidth}
                     rowHeight={rowHeight}
+                    indent={staffIndent}
                     showChironomy={showChironomy}
                     isSelected={isSelected}
                     onSelect={(n) => setSelectedNoteId(n.id)}
@@ -1070,7 +1077,7 @@ export default function GridEditor({
             {(isPlaying || isPlayingTarget) && (
               <div
                 className="absolute top-0 bottom-0 w-[3px] bg-rose-500 pointer-events-none z-30 transition-all duration-75 shadow-lg"
-                style={{ left: `${playheadPosPx}px` }}
+                style={{ left: `${staffIndent + playheadPosPx}px` }}
               >
                 {/* Glowing Playhead cap */}
                 <div className="absolute -top-1.5 -left-1.5 w-4 h-4 bg-rose-600 rounded-full border-2 border-white shadow-md animate-pulse" />
