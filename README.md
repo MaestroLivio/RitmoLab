@@ -205,4 +205,12 @@ Nel pannello **Percorso Didattico** è presente il pulsante **Strumenti Docente*
 ---
 
 ## 📄 Licenza
-Rilasciato sotto licenza MIT. Ideato per docenti ed educatori musicali della Scuola Primaria.
+
+RitmoLab è rilasciato sotto licenza **Creative Commons Attribuzione 4.0 Internazionale**
+(CC BY 4.0). Sei libero di condividere e adattare il materiale, anche a fini commerciali,
+a condizione di attribuire l'opera all'autore ([MaestroLivio](https://github.com/MaestroLivio)),
+fornire un collegamento alla licenza e indicare se sono state apportate modifiche.
+
+Testo completo della licenza: <https://creativecommons.org/licenses/by/4.0/>
+
+Ideato per docenti ed educatori musicali della Scuola Primaria.

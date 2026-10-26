@@ -136,3 +136,11 @@ script qui sopra.
 > `SKIP_BUILD=1` per impacchettare il `RitmoLab.html` già presente, oppure
 > esegui la build su una macchina con `node_modules` installato
 > correttamente.
+
+## Licenza
+
+RitmoLab è rilasciato sotto licenza **Creative Commons Attribuzione 4.0
+Internazionale (CC BY 4.0)**. Sei libero di condividere e adattare il
+materiale, anche a fini commerciali, a condizione di attribuire l'opera
+all'autore, fornire un collegamento alla licenza e indicare eventuali
+modifiche. Testo completo: <https://creativecommons.org/licenses/by/4.0/>.

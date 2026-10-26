@@ -74,7 +74,7 @@ cat > "$APP_DIR/package.json" <<PKGJSON
   "description": "Laboratorio musicale per la scuola primaria",
   "main": "main.cjs",
   "author": "MaestroLivio",
-  "license": "MIT",
+  "license": "CC-BY-4.0",
   "private": true
 }
 PKGJSON

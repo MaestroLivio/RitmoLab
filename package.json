@@ -24,7 +24,7 @@
     "audio-synthesis"
   ],
   "author": "RitmoLab Team",
-  "license": "MIT",
+  "license": "CC-BY-4.0",
   "dependencies": {
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
