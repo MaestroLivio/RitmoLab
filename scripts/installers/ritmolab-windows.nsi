@@ -21,7 +21,7 @@ ${StrRep}
 
 ; APP_VERSION e OUTFILE possono essere passati da riga di comando con -D
 !ifndef APP_VERSION
-  !define APP_VERSION "1.0.0"
+  !define APP_VERSION "1.1.0"
 !endif
 !ifndef OUTFILE
   !define OUTFILE "RitmoLab-${APP_VERSION}-Windows-Setup.exe"
@@ -36,7 +36,7 @@ SetCompressor /SOLID lzma
 ShowInstDetails show
 ShowUninstDetails show
 
-VIProductVersion "1.0.0.0"
+VIProductVersion "1.1.0.0"
 VIAddVersionKey "ProductName"     "${APP_NAME}"
 VIAddVersionKey "ProductVersion"  "${APP_VERSION}"
 VIAddVersionKey "CompanyName"     "${APP_PUBLISHER}"

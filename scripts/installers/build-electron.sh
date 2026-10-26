@@ -23,7 +23,7 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 TARGET="${1:-all}"
-VERSION="$(node -p "require('$ROOT/package.json').version" 2>/dev/null || echo 1.0.0)"
+VERSION="$(node -p "require('$ROOT/package.json').version" 2>/dev/null || echo 1.1.0)"
 
 BUILD="$ROOT/.build/electron"
 APP_DIR="$BUILD/app"
@@ -63,6 +63,8 @@ mkdir -p "$APP_DIR"
 cp "$ROOT/RitmoLab.html"                "$APP_DIR/RitmoLab.html"
 cp "$ROOT/electron/main-packaged.cjs"   "$APP_DIR/main.cjs"
 cp "$ROOT/electron/preload-packaged.cjs" "$APP_DIR/preload.cjs"
+cp "$ROOT/electron/updater.cjs"         "$APP_DIR/updater.cjs"
+cp "$ROOT/LICENSE"                      "$APP_DIR/LICENSE"
 sed -i '' "s/__RITMOLAB_VERSION__/$VERSION/" "$APP_DIR/preload.cjs" 2>/dev/null \
   || sed -i "s/__RITMOLAB_VERSION__/$VERSION/" "$APP_DIR/preload.cjs"
 

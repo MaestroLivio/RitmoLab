@@ -23,6 +23,7 @@
 const { app, BrowserWindow, protocol, net, shell, session } = require('electron');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const updater = require('./updater.cjs');
 
 const SCHEME = 'ritmolab';
 const APP_ORIGIN = `${SCHEME}://app`;
@@ -125,6 +126,10 @@ function createWindow() {
 
 app.whenReady().then(() => {
   registerProtocolHandler();
+
+  // Auto-aggiornamento: controlla silenziosamente una nuova release su GitHub.
+  // Registra gli handler IPC e passa la finestra principale per gli eventi.
+  updater.init(() => mainWindow);
 
   // Permesso del microfono: la richiesta nativa del sistema operativo resta.
   const ses = session.defaultSession;

@@ -33,17 +33,22 @@ module.exports = {
   files: [
     'main.cjs',
     'preload.cjs',
+    'updater.cjs',
     'RitmoLab.html',
     'package.json',
+    'LICENSE',
     '!node_modules/**',
     '!**/*.map',
   ],
 
   // L'app impacchettata non ha un package.json con `main`: lo dichiariamo qui.
+  // Nota: NON impostiamo `version` qui: la versione reale viene letta dal
+  // package.json dell'app preparato da build-electron.sh (usa il `version`
+  // del package.json di progetto). In questo modo `app.getVersion()` riflette
+  // sempre la versione corretta e l'auto-aggiornamento funziona.
   extraMetadata: {
     main: 'main.cjs',
     name: 'ritmolab',
-    version: '1.0.0',
     // Usato dai desktop Linux per associare la finestra al launcher.
     desktopName: 'RitmoLab.desktop',
   },

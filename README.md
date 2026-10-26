@@ -6,16 +6,16 @@
 
 ## 📥 Scarica RitmoLab
 
-Gli installer sono allegati alla **[release 1.0.0](https://github.com/MaestroLivio/RitmoLab/releases/latest)**. Sono **eseguibili autonomi**: contengono tutto il necessario e funzionano offline, senza browser installato.
+Gli installer sono allegati alla **[release più recente](https://github.com/MaestroLivio/RitmoLab/releases/latest)**. Sono **eseguibili autonomi**: contengono tutto il necessario e funzionano offline, senza browser installato. Le versioni desktop (Electron) controllano automaticamente all'avvio se è disponibile un aggiornamento e propongono di scaricarlo e installarlo.
 
 | Sistema | File |
 |---|---|
-| **macOS** Apple Silicon | `RitmoLab-1.0.0-macOS-arm64.dmg` |
-| **macOS** Intel | `RitmoLab-1.0.0-macOS-x64.dmg` |
-| **Windows 10 / 11** | `RitmoLab-1.0.0-Windows-x64.exe` |
-| **Windows** portable | `RitmoLab-1.0.0-Windows-Portable.exe` |
-| **Linux** | `RitmoLab-1.0.0-Linux-x86_64.AppImage` |
-| **Linux** (Debian/Ubuntu) | `RitmoLab-1.0.0-Linux-amd64.deb` |
+| **macOS** Apple Silicon | `RitmoLab-1.1.0-macOS-arm64.dmg` |
+| **macOS** Intel | `RitmoLab-1.1.0-macOS-x64.dmg` |
+| **Windows 10 / 11** | `RitmoLab-1.1.0-Windows-x64.exe` |
+| **Windows** portable | `RitmoLab-1.1.0-Windows-Portable.exe` |
+| **Linux** | `RitmoLab-1.1.0-Linux-x86_64.AppImage` |
+| **Linux** (Debian/Ubuntu) | `RitmoLab-1.1.0-Linux-amd64.deb` |
 | **ChromeOS / Flex** | `RitmoLab-ChromeOS.zip` (doppio clic su `RitmoLab.html`) |
 
 Al primo avvio macOS e Windows mostrano un avviso di sicurezza, perché i pacchetti non sono firmati con certificati commerciali. Istruzioni dettagliate in [`installers/LEGGIMI.txt`](installers/LEGGIMI.txt).
@@ -150,8 +150,10 @@ SKIP_BUILD=1 bash scripts/installers/build-electron.sh # riusa RitmoLab.html
 I pacchetti finiscono in `installers/`. Per pubblicarli:
 
 ```bash
-gh release upload v1.0.0 installers/macOS/*.dmg installers/Windows/*.exe \
-  installers/Linux/*.AppImage installers/Linux/*.deb --clobber
+gh release create v1.1.0 installers/macOS/*.dmg installers/Windows/*.exe \
+  installers/Linux/*.AppImage installers/Linux/*.deb \
+  installers/ChromeOS/*.zip installers/ChromeOS/*.deb \
+  installers/LEGGIMI.txt --title "RitmoLab 1.1.0"
 ```
 
 ### 6. Esecuzione Test Automatici

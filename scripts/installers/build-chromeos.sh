@@ -12,14 +12,14 @@
 #     Include manifest, service worker e un server locale minimale:
 #     basta avviare il server e Chrome mostra il pulsante "Installa".
 #
-#  3. RitmoLab-1.0.0-chromeos.deb
+#  3. RitmoLab-1.1.0-chromeos.deb
 #     Per i dispositivi ChromeOS con Linux (Crostini) attivo: installa
 #     l'app in /opt/ritmolab, crea la voce nel menu e il launcher.
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-VERSION="1.0.0"
+VERSION="1.1.0"
 OUT="$ROOT/installers/ChromeOS"
 BUILD="$ROOT/.build/chromeos"
 ICON_SRC="$ROOT/.build/icon"

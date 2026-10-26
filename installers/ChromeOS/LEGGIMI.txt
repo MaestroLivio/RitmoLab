@@ -1,4 +1,4 @@
-RitmoLab 1.0.0 - Installazione su ChromeOS / ChromeOS Flex
+RitmoLab 1.1.0 - Installazione su ChromeOS / ChromeOS Flex
 =============================================================
 
 Ci sono tre modi per usare RitmoLab su un Chromebook. Scegli quello
@@ -21,12 +21,12 @@ Terminale Linux) oppure un computer con Python 3.
 Istruzioni complete dentro lo zip, file LEGGIMI.txt.
 
 --------------------------------------------------------------
-3) PACCHETTO LINUX  ->  RitmoLab-1.0.0-chromeos.deb
+3) PACCHETTO LINUX  ->  RitmoLab-1.1.0-chromeos.deb
 --------------------------------------------------------------
 Per Chromebook con Linux attivo. Apre il Terminale Linux
 (Impostazioni > Sviluppatori > Terminale Linux) ed esegue:
 
-    sudo dpkg -i RitmoLab-1.0.0-chromeos.deb
+    sudo dpkg -i RitmoLab-1.1.0-chromeos.deb
     sudo apt-get -f install        # solo se mancano dipendenze
 
 Al termine compare "RitmoLab" nel menu delle app Linux e sulla shelf.

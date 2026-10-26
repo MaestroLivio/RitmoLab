@@ -15,7 +15,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 APP_NAME="RitmoLab"
-VERSION="1.0.0"
+VERSION="1.1.0"
 BUILD="$ROOT/.build/macos"
 OUT="$ROOT/installers/macOS"
 ICON_SRC="$ROOT/.build/icon"

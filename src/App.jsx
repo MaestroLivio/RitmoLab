@@ -22,6 +22,7 @@ import DictationGame from './components/DictationGame';
 import LevelSelector from './components/LevelSelector';
 import InstrumentariumModal from './components/InstrumentariumModal';
 import SettingsModal from './components/SettingsModal';
+import UpdateModal from './components/UpdateModal';
 import { levelManager } from './engine/LevelManager';
 import { settingsManager } from './engine/SettingsManager';
 import { audioEngine } from './engine/AudioEngine';
@@ -34,6 +35,7 @@ export default function App() {
   const [showLevelSelector, setShowLevelSelector] = useState(false);
   const [showInstrumentarium, setShowInstrumentarium] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [userScoreNotes, setUserScoreNotes] = useState([]);
   const [stats, setStats] = useState(levelManager.getOverallStatistics());
 
@@ -43,6 +45,14 @@ export default function App() {
       setStats(levelManager.getOverallStatistics());
     });
     return unsub;
+  }, []);
+
+  // Avvia il controllo aggiornamenti (solo nella versione impacchettata).
+  useEffect(() => {
+    const api = window.ritmoLabAPI;
+    if (api && api.updates) {
+      setShowUpdateModal(true);
+    }
   }, []);
 
   // Current level data
@@ -344,6 +354,11 @@ export default function App() {
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
       />
+
+      {/* Aggiornamento automatico (solo versione impacchettata) */}
+      {showUpdateModal && (
+        <UpdateModal onClose={() => setShowUpdateModal(false)} />
+      )}
     </div>
   );
 }
