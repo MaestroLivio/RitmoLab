@@ -35,6 +35,11 @@ import { audioEngine, SOLFEGE_MAP } from '../engine/AudioEngine';
 import { FIGURE_DURATIONS, FIGURE_INFO } from '../data/curriculum';
 import { settingsManager } from '../engine/SettingsManager';
 import ProjectManagerModal from './ProjectManagerModal';
+import { ScoreStaff, ScoreNotes } from './ScoreEngraving';
+import { getMeter } from '../engine/Transport';
+
+const SECOND_VOICE = PENTAGRAM_ROWS.map(row => ({ ...row, id: `v2:${row.id}`, voice: 2 }));
+const DUAL_ROWS = [...PENTAGRAM_ROWS, ...SECOND_VOICE];
 
 export default function GridEditor({
   initialNotes = [],
@@ -47,7 +52,12 @@ export default function GridEditor({
   const isSandbox = levelConfig?.id === 'SANDBOX' || levelConfig?.isSandbox;
 
   // View mode: 'blocks' (Proportional) or 'conventional' (Standard notation)
-  const [viewMode, setViewMode] = useState('blocks');
+  const [viewMode, setViewMode] = useState(levelConfig?.section === 'melody' ? 'conventional' : 'blocks');
+  const [cursor, setCursor] = useState({ step: 0, row: 0 });
+  const [undo, setUndo] = useState([]);
+  const [redo, setRedo] = useState([]);
+  const [dotted, setDotted] = useState(false);
+  const [editMessage, setEditMessage] = useState('');
 
   // Sandbox-specific configuration: 'rhythm' (Tablatura Ritmica) | 'melody' (Notazione Melodica)
   const [sandboxMode, setSandboxMode] = useState('rhythm');
@@ -103,21 +113,14 @@ export default function GridEditor({
 
   const gridContainerRef = useRef(null);
   const staffAreaRef = useRef(null);
+  const rowLabelsRef = useRef(null);
 
   // Dimensions
   const stepWidth = 32; // px per 16th note
-  const rowHeight = 44; // px per staff row
+  const rowHeight = viewMode === 'conventional' ? 16 : 44;
 
   // Sixteenths per measure based on active Time Signature
-  const sixteenthsPerBar = React.useMemo(() => {
-    switch (timeSignature) {
-      case '2/4': return 8;
-      case '3/4': return 12;
-      case '6/8': return 12;
-      case '4/4':
-      default: return 16;
-    }
-  }, [timeSignature]);
+  const { barSteps: sixteenthsPerBar } = getMeter(timeSignature);
 
   // Determine total steps and bars
   const totalBars = isSandbox
@@ -137,7 +140,7 @@ export default function GridEditor({
   // Left gutter reserved for clef + time signature, so notes/bar lines
   // start AFTER them in conventional notation instead of overlapping.
   const showClef = staffType === 'pentagram' || staffType === 'dual';
-  const staffIndent = showClef ? 72 : 0;
+  const staffIndent = showClef ? 86 : viewMode === 'conventional' ? 18 : 0;
 
   const activeRows = React.useMemo(() => {
     if (isSandbox) {
@@ -147,7 +150,7 @@ export default function GridEditor({
       } else {
         if (sandboxStaff === 'bigram') return BIGRAM_ROWS;
         if (sandboxStaff === 'trigram') return TRIGRAM_ROWS;
-        return PENTAGRAM_ROWS;
+        return sandboxStaff === 'dual' ? DUAL_ROWS : PENTAGRAM_ROWS;
       }
     }
 
@@ -159,7 +162,8 @@ export default function GridEditor({
     // Curriculum mode standard
     if (staffType === 'bigram') return BIGRAM_ROWS;
     if (staffType === 'trigram') return TRIGRAM_ROWS;
-    if (staffType === 'pentagram' || staffType === 'dual') return PENTAGRAM_ROWS;
+    if (staffType === 'dual') return DUAL_ROWS;
+    if (staffType === 'pentagram') return PENTAGRAM_ROWS;
 
     // Rhythmic / Percussion in curriculum
     if (levelConfig?.allowedSounds && levelConfig.allowedSounds.length > 0) {
@@ -188,10 +192,40 @@ export default function GridEditor({
     }
   }, [levelConfig]);
 
+  useEffect(() => {
+    setUndo([]);
+    setRedo([]);
+    setSelectedNoteId(null);
+    setTimeSignature(levelConfig?.timeSignature || '4/4');
+  }, [levelConfig?.id]);
+
+  useEffect(() => {
+    if (!isSandbox && levelConfig?.allowedFigures?.length && !levelConfig.allowedFigures.includes(selectedFigure)) {
+      setSelectedFigure(levelConfig.allowedFigures[0]);
+    }
+  }, [isSandbox, levelConfig, selectedFigure]);
+
   // Notify parent on notes change
-  const updateNotes = (newNotes) => {
+  const updateNotes = (newNotes, remember = true) => {
+    if (remember) {
+      setUndo(history => [...history.slice(-49), notes]);
+      setRedo([]);
+    }
     setNotes(newNotes);
     if (onNotesChange) onNotesChange(newNotes);
+  };
+
+  const goBack = () => {
+    if (!undo.length || isReadOnly) return;
+    setRedo(stack => [...stack, notes]);
+    updateNotes(undo.at(-1), false);
+    setUndo(undo.slice(0, -1));
+  };
+  const goForward = () => {
+    if (!redo.length || isReadOnly) return;
+    setUndo(stack => [...stack, notes]);
+    updateNotes(redo.at(-1), false);
+    setRedo(redo.slice(0, -1));
   };
 
   // -------------------------------------------------------------
@@ -236,7 +270,7 @@ export default function GridEditor({
         score,
         (progress) => {
           setCurrentStep(progress.step);
-          setPlayheadPosPx(progress.step * stepWidth);
+          setPlayheadPosPx(progress.position * stepWidth);
           setCurrentBeat(progress.measureBeat);
           setBeatProgress(progress.beatProgress);
         },
@@ -279,7 +313,7 @@ export default function GridEditor({
       score,
       (progress) => {
         setCurrentStep(progress.step);
-        setPlayheadPosPx(progress.step * stepWidth);
+          setPlayheadPosPx(progress.position * stepWidth);
         setCurrentBeat(progress.measureBeat);
         setBeatProgress(progress.beatProgress);
       },
@@ -309,7 +343,12 @@ export default function GridEditor({
       setIsSolutionVisibleOnGrid(false);
     } else {
       // Load target solution on grid
-      updateNotes(levelConfig.targetNotes);
+      updateNotes([
+        ...levelConfig.targetNotes,
+        ...(staffType === 'dual' ? (levelConfig.targetNotesTrack2 || []).map(note => ({
+          ...note, id: `v2:${note.id}`, rowId: `v2:${note.rowId}`,
+        })) : []),
+      ]);
       setIsSolutionVisibleOnGrid(true);
     }
   };
@@ -327,7 +366,7 @@ export default function GridEditor({
     const relX = clientX - rect.left - staffIndent;
     const relY = clientY - rect.top;
 
-    if (relX < 0 || relY < 0) return null;
+    if (relX < 0 || relY < 0 || relX >= totalSteps * stepWidth || relY >= activeRows.length * rowHeight) return null;
 
     // Snap to 1/16th note on X
     const rawStep = Math.floor(relX / stepWidth);
@@ -352,7 +391,16 @@ export default function GridEditor({
     if (isReadOnly) return;
     const snap = calculateSnap(e.clientX, e.clientY);
     if (!snap) return;
+    staffAreaRef.current?.focus({ preventScroll: true });
+    setCursor({ step: snap.step, row: snap.rowIdx });
+    insertAt(snap);
+  };
 
+  const toolDuration = (figure = selectedFigure) =>
+    (FIGURE_DURATIONS[figure] || 4) * (dotted && isSandbox && !figure.includes('sixteenth') ? 1.5 : 1);
+
+  const insertAt = (snap) => {
+    if (isReadOnly || !snap) return;
     // Check if clicked directly on an existing note
     const existing = notes.find(n => n.step === snap.step && n.rowId === snap.rowId);
     if (existing) {
@@ -361,8 +409,13 @@ export default function GridEditor({
     }
 
     // Add note at clicked position
-    const duration = FIGURE_DURATIONS[selectedFigure] || 4;
+    const duration = toolDuration();
     const isRest = selectedFigure.startsWith('rest_');
+    if (snap.step + duration > totalSteps) {
+      setEditMessage('La figura supera la fine della partitura. Aggiungi una battuta o scegli una durata più breve.');
+      return;
+    }
+    setEditMessage('');
 
     const newNote = {
       id: `note_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
@@ -389,8 +442,9 @@ export default function GridEditor({
   };
 
   const handleStartDragExisting = (note, e) => {
-    if (isReadOnly) return;
+    if (isReadOnly || e.button !== 0) return;
     e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
     setDraggedNote(note);
     setSelectedNoteId(note.id);
   };
@@ -398,13 +452,12 @@ export default function GridEditor({
   const handleMouseMove = (e) => {
     if (!draggedNote) return;
     const snap = calculateSnap(e.clientX, e.clientY);
-    if (snap) {
-      setGhostSnap(snap);
-    }
+    setGhostSnap(snap);
   };
 
   const handleMouseUp = () => {
-    if (draggedNote && ghostSnap) {
+    if (draggedNote && ghostSnap && canMove(draggedNote, ghostSnap) &&
+      (draggedNote.step !== ghostSnap.step || draggedNote.rowId !== ghostSnap.rowId)) {
       const updated = notes.map(n => {
         if (n.id === draggedNote.id) {
           return {
@@ -435,14 +488,81 @@ export default function GridEditor({
   };
 
   const handleDeleteSelected = () => {
-    if (!selectedNoteId) return;
+    if (!selectedNoteId || isReadOnly) return;
     updateNotes(notes.filter(n => n.id !== selectedNoteId));
     setSelectedNoteId(null);
   };
 
   const handleClearAll = () => {
+    if (isReadOnly) return;
     updateNotes([]);
     setSelectedNoteId(null);
+  };
+
+  const canMove = (note, spot) => spot.step + (note.duration || 4) <= totalSteps &&
+    !notes.some(other => other.id !== note.id && other.step === spot.step && other.rowId === spot.rowId);
+
+  const handleScoreKeys = (e) => {
+    if (isReadOnly || e.altKey) return;
+    const row = Math.min(cursor.row, activeRows.length - 1);
+    const step = Math.min(cursor.step, totalSteps - 1);
+    const note = notes.find(item => item.id === selectedNoteId);
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) goForward(); else goBack();
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      handleDeleteSelected();
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      const target = activeRows[row];
+      if (target) insertAt({ step, rowId: target.id, pitch: target.pitch || null, sound: target.sound || null });
+    } else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+      e.preventDefault();
+      const moveNote = e.shiftKey && note;
+      const baseRow = moveNote ? activeRows.findIndex(r => r.id === note.rowId) : row;
+      const baseStep = moveNote ? note.step : step;
+      const nextRow = Math.max(0, Math.min(activeRows.length - 1, baseRow + (e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0)));
+      const nextStep = Math.max(0, Math.min(totalSteps - 1, baseStep + (e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0)));
+      const target = activeRows[nextRow];
+      if (!target) return;
+      if (moveNote) {
+        const spot = { step: nextStep, rowId: target.id, pitch: target.pitch || null, sound: target.sound || null };
+        if (!canMove(note, spot)) return;
+        updateNotes(notes.map(item => item.id === note.id ? { ...item, ...spot } : item));
+      } else setSelectedNoteId(notes.find(item => item.step === nextStep && item.rowId === target.id)?.id ?? null);
+      setCursor({ row: nextRow, step: nextStep });
+      const scroller = gridContainerRef.current;
+      if (scroller) {
+        const x = staffIndent + nextStep * stepWidth;
+        if (x < scroller.scrollLeft) scroller.scrollLeft = x;
+        else if (x + stepWidth > scroller.scrollLeft + scroller.clientWidth) scroller.scrollLeft = x + stepWidth - scroller.clientWidth;
+        const y = nextRow * rowHeight;
+        if (y < scroller.scrollTop) scroller.scrollTop = y;
+        else if (y + rowHeight + 32 > scroller.scrollTop + scroller.clientHeight) {
+          scroller.scrollTop = y + rowHeight + 32 - scroller.clientHeight;
+        }
+      }
+    }
+  };
+
+  const changeFigure = (figure, dot = dotted) => {
+    setSelectedFigure(figure);
+    const note = notes.find(item => item.id === selectedNoteId);
+    if (!note || isReadOnly) return;
+    const duration = (FIGURE_DURATIONS[figure] || 4) * (dot && isSandbox && !figure.includes('sixteenth') ? 1.5 : 1);
+    if (note.step + duration > totalSteps) {
+      setEditMessage('La durata scelta supera la fine della partitura.');
+      return;
+    }
+    setEditMessage('');
+    updateNotes(notes.map(item => item.id === note.id ? { ...item, duration, isRest: figure.startsWith('rest_') } : item));
+  };
+  const changeAccidental = (value) => {
+    setSelectedAccidental(value);
+    if (!isReadOnly && notes.some(note => note.id === selectedNoteId && note.pitch && !note.isRest)) {
+      updateNotes(notes.map(note => note.id === selectedNoteId ? { ...note, accidental: value } : note));
+    }
   };
 
   // Collapsible interface sections to maximize workspace
@@ -529,9 +649,10 @@ export default function GridEditor({
 
   return (
     <div
-      className="flex flex-col h-full bg-montessori-cream rounded-3xl border-2 border-amber-200/90 shadow-playful overflow-hidden select-none"
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
+      className="studio-panel score-editor flex flex-col h-full overflow-hidden select-none"
+      onPointerMove={handleMouseMove}
+      onPointerUp={handleMouseUp}
+      onPointerCancel={() => { setDraggedNote(null); setGhostSnap(null); }}
     >
       {/* ----------------- DIDACTIC EXPLANATION CARD (For Curriculum levels) ----------------- */}
       {showDidacticCard && !isSandbox && levelConfig && (
@@ -561,8 +682,10 @@ export default function GridEditor({
             }`}
           >
             {isPlaying ? <Square className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
-            <span>{isPlaying ? 'Pausa' : 'Ascolta'}</span>
+            <span>{isPlaying ? 'Ferma' : 'Ascolta'}</span>
           </button>
+          <button type="button" className="editor-icon" onClick={goBack} disabled={!undo.length || isReadOnly} title="Annulla (Ctrl/⌘+Z)" aria-label="Annulla">↶</button>
+          <button type="button" className="editor-icon" onClick={goForward} disabled={!redo.length || isReadOnly} title="Ripristina (Ctrl/⌘+Maiusc+Z)" aria-label="Ripristina">↷</button>
 
           <button
             onClick={handleStop}
@@ -642,7 +765,7 @@ export default function GridEditor({
               </button>
 
               <button
-                onClick={() => setSandboxMode('melody')}
+                 onClick={() => { setSandboxMode('melody'); setViewMode('conventional'); }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
                   sandboxMode === 'melody'
                     ? 'bg-purple-600 text-white shadow-sm'
@@ -904,7 +1027,8 @@ export default function GridEditor({
             return (
               <button
                 key={key}
-                onClick={() => setSelectedFigure(key)}
+                onClick={() => changeFigure(key)}
+                aria-pressed={isCurrent}
                 className={`btn-playful px-3 py-1.5 flex items-center gap-1.5 text-xs transition-all ${
                   isCurrent
                     ? 'bg-amber-400 text-amber-950 shadow-playful-sm scale-105 border-amber-500'
@@ -918,6 +1042,13 @@ export default function GridEditor({
               </button>
             );
           })}
+          {isSandbox && (
+            <button type="button" className="editor-icon" aria-pressed={dotted}
+              disabled={selectedFigure.includes('sixteenth')} onClick={() => {
+                setDotted(!dotted);
+                changeFigure(selectedFigure, !dotted);
+              }}>· Punto</button>
+          )}
         </div>
 
         {/* Accidentals (# and b) if enabled or in sandbox */}
@@ -927,7 +1058,8 @@ export default function GridEditor({
               Alterazione:
             </span>
             <button
-              onClick={() => setSelectedAccidental(selectedAccidental === 1 ? 0 : 1)}
+              onClick={() => changeAccidental(1)}
+              aria-pressed={selectedAccidental === 1}
               className={`btn-playful px-2.5 py-1 text-xs font-black rounded-xl border ${
                 selectedAccidental === 1
                   ? 'bg-rose-400 text-white border-rose-500'
@@ -938,7 +1070,8 @@ export default function GridEditor({
               ♯ Diesis
             </button>
             <button
-              onClick={() => setSelectedAccidental(selectedAccidental === -1 ? 0 : -1)}
+              onClick={() => changeAccidental(-1)}
+              aria-pressed={selectedAccidental === -1}
               className={`btn-playful px-2.5 py-1 text-xs font-black rounded-xl border ${
                 selectedAccidental === -1
                   ? 'bg-sky-400 text-white border-sky-500'
@@ -948,11 +1081,15 @@ export default function GridEditor({
             >
               ♭ Bemolle
             </button>
+            <button type="button" className="editor-icon" aria-pressed={selectedAccidental === 0} onClick={() => changeAccidental(0)}>♮ Naturale</button>
           </div>
         )}
       </div>
       )}
 
+      <div className="score-status" role="status">
+        {editMessage || `Battuta ${1 + Math.floor(Math.min(cursor.step, totalSteps - 1) / sixteenthsPerBar)} · ${activeRows[Math.min(cursor.row, activeRows.length - 1)]?.label || ''} · Frecce: naviga · Invio: inserisci · Maiusc + frecce: sposta · Canc: elimina`}
+      </div>
       {/* ----------------- WORKSPACE BODY: TRACK HEADERS + 2D GRID ----------------- */}
       <div className="flex flex-1 overflow-hidden relative">
         {/* Track Headers (Left sidebar) */}
@@ -962,9 +1099,10 @@ export default function GridEditor({
             <span>Ascolta</span>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-hidden">
+            <div ref={rowLabelsRef}>
             {activeRows.map((row) => (
-              <div
+              <button type="button"
                 key={row.id}
                 onClick={() => {
                   if (row.pitch) {
@@ -973,25 +1111,29 @@ export default function GridEditor({
                     audioEngine.playSoundByName(row.sound);
                   }
                 }}
-                className="flex items-center justify-between px-3 border-b border-slate-100/80 cursor-pointer hover:bg-amber-50/80 transition-colors group"
+                className="flex w-full items-center justify-between px-3 border-b border-slate-100/80 cursor-pointer hover:bg-indigo-50 transition-colors group"
                 style={{ height: `${rowHeight}px` }}
                 title={`Clicca per ascoltare: ${row.label}`}
               >
                 <div className="flex items-center gap-1.5 overflow-hidden">
-                  <span className="text-base select-none">{row.icon || '🎵'}</span>
+                  {viewMode === 'blocks' && <span className="text-base select-none">{row.icon || '🎵'}</span>}
                   <span className="text-xs font-black text-slate-700 group-hover:text-amber-800 truncate">
-                    {row.label}
+                    {row.voice === 2 ? 'II · ' : ''}{row.label}
                   </span>
                 </div>
                 <Volume2 className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-600 flex-shrink-0" />
-              </div>
+              </button>
             ))}
+            </div>
           </div>
         </div>
 
         {/* 2D Music Grid (Horizontal scrollable) */}
         <div
           ref={gridContainerRef}
+          onScroll={e => {
+            if (rowLabelsRef.current) rowLabelsRef.current.style.transform = `translateY(${-e.currentTarget.scrollTop}px)`;
+          }}
           className="flex-1 overflow-x-auto overflow-y-auto relative bg-white/80 cursor-default"
         >
           {/* Timeline numbers (Top bar of grid) */}
@@ -1015,10 +1157,19 @@ export default function GridEditor({
           <div
             ref={staffAreaRef}
             onClick={handleGridClick}
-            className="relative cursor-crosshair"
+            onKeyDown={handleScoreKeys}
+            tabIndex={isReadOnly ? undefined : 0}
+            role="group"
+            aria-label="Editor della partitura. Frecce per navigare, Invio per inserire, Maiusc e frecce per spostare."
+            className="relative cursor-crosshair score-area"
             style={{ width: `${staffIndent + totalSteps * stepWidth}px` }}
           >
-            <StaffRenderer
+            {viewMode === 'conventional' ? <>
+              <ScoreStaff rows={activeRows} rowHeight={rowHeight} stepWidth={stepWidth} indent={staffIndent}
+                totalSteps={totalSteps} signature={timeSignature} treble={showClef} />
+              <ScoreNotes rows={activeRows} notes={notes} rowHeight={rowHeight} stepWidth={stepWidth}
+                indent={staffIndent} totalSteps={totalSteps} signature={timeSignature} selectedId={selectedNoteId} />
+            </> : <StaffRenderer
               staffType={staffType}
               activeRows={activeRows}
               stepWidth={stepWidth}
@@ -1026,7 +1177,12 @@ export default function GridEditor({
               totalSteps={totalSteps}
               timeSignature={timeSignature}
               indent={staffIndent}
-            />
+            />}
+            <div className="score-cursor" aria-hidden="true" style={{
+              left: staffIndent + Math.min(cursor.step, totalSteps - 1) * stepWidth,
+              top: Math.min(cursor.row, activeRows.length - 1) * rowHeight,
+              width: stepWidth, height: rowHeight,
+            }} />
 
             {/* Ghost Snap preview when hovering/dragging */}
             {ghostSnap && (
@@ -1035,7 +1191,7 @@ export default function GridEditor({
                 style={{
                   left: `${staffIndent + ghostSnap.step * stepWidth}px`,
                   top: `${ghostSnap.rowIdx * rowHeight + 2}px`,
-                  width: `${(FIGURE_DURATIONS[selectedFigure] || 4) * stepWidth - 4}px`,
+                  width: `${(viewMode === 'conventional' ? 1 : (draggedNote?.duration || toolDuration())) * stepWidth - 4}px`,
                   height: `${rowHeight - 4}px`,
                 }}
               />
@@ -1046,20 +1202,33 @@ export default function GridEditor({
               const rowIdx = activeRows.findIndex(r => r.id === note.rowId);
               if (rowIdx === -1) return null;
 
-              const topPx = rowIdx * rowHeight;
+               const restRow = note.isRest && viewMode === 'conventional' && isMelodic
+                 ? activeRows.findIndex(row => row.id === (activeRows[rowIdx].voice === 2 ? 'v2:SI' : 'SI')) : -1;
+               const topPx = (restRow >= 0 ? restRow : rowIdx) * rowHeight;
               const isSelected = selectedNoteId === note.id;
 
               return (
                 <div
                   key={note.id}
-                  onMouseDown={(e) => handleStartDragExisting(note, e)}
+                   onPointerDown={(e) => handleStartDragExisting(note, e)}
                   style={{
                     position: 'absolute',
                     top: `${topPx}px`,
                     height: `${rowHeight}px`,
                   }}
                 >
-                  <NoteRenderer
+                   {viewMode === 'conventional' ? (
+                     <button type="button" tabIndex={-1}
+                       aria-label={`${note.isRest ? 'Pausa' : activeRows[rowIdx].label}, battuta ${Math.floor(note.step / sixteenthsPerBar) + 1}`}
+                       className={`score-note-hit ${isSelected ? 'is-selected' : ''}`}
+                       style={{ left: staffIndent + note.step * stepWidth, width: stepWidth, height: rowHeight }}
+                       onClick={e => {
+                         e.stopPropagation();
+                         staffAreaRef.current?.focus({ preventScroll: true });
+                         setSelectedNoteId(note.id);
+                         setCursor({ step: note.step, row: rowIdx });
+                       }} />
+                   ) : <NoteRenderer
                     note={note}
                     viewMode={viewMode}
                     stepWidth={stepWidth}
@@ -1068,7 +1237,7 @@ export default function GridEditor({
                     showChironomy={showChironomy}
                     isSelected={isSelected}
                     onSelect={(n) => setSelectedNoteId(n.id)}
-                  />
+                   />}
                 </div>
               );
             })}
@@ -1076,8 +1245,8 @@ export default function GridEditor({
             {/* Playhead Line */}
             {(isPlaying || isPlayingTarget) && (
               <div
-                className="absolute top-0 bottom-0 w-[3px] bg-rose-500 pointer-events-none z-30 transition-all duration-75 shadow-lg"
-                style={{ left: `${staffIndent + playheadPosPx}px` }}
+                 className="absolute top-0 bottom-0 w-[2px] bg-violet-600 pointer-events-none z-30"
+                 style={{ transform: `translate3d(${staffIndent + playheadPosPx}px, 0, 0)` }}
               >
                 {/* Glowing Playhead cap */}
                 <div className="absolute -top-1.5 -left-1.5 w-4 h-4 bg-rose-600 rounded-full border-2 border-white shadow-md animate-pulse" />

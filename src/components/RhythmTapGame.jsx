@@ -22,7 +22,10 @@ import { audioEngine, SOLFEGE_MAP } from '../engine/AudioEngine';
 import { midiManager } from '../engine/MidiManager';
 import { settingsManager } from '../engine/SettingsManager';
 import { pitchDetector } from '../engine/PitchDetector';
+import { getMeter } from '../engine/Transport';
 import KodalyHandSign, { KODALY_SIGNS_DATA } from './KodalyHandSign';
+import { StaffGlyph } from './StaffGlyph';
+import { ALL_RHYTHMIC_ROWS, BIGRAM_ROWS, TRIGRAM_ROWS } from './StaffRenderer';
 
 // Keyboard mappings for Melodic Tap
 const KEYBOARD_PITCH_MAP = {
@@ -71,19 +74,6 @@ const PITCH_STAFF_Y = {
 // The 5 staff lines (E4, G4, B4, D5, F5) 24px apart, matching PITCH_STAFF_Y.
 const STAFF_LINES = [48, 72, 96, 120, 144];
 
-// Vertical Y coordinates for Rhythmic Tracks
-const RHYTHM_TRACK_Y = {
-  'snap': 32,
-  'triangle': 32,
-  'clap': 68,
-  'claves': 68,
-  'chest': 104,
-  'tambourine': 104,
-  'thighs': 140,
-  'cymbals': 140,
-  'feet': 176,
-};
-
 export default function RhythmTapGame({
   level,
   onComplete = null,
@@ -95,13 +85,23 @@ export default function RhythmTapGame({
   const [micActive, setMicActive] = useState(false);
   const [livePitch, setLivePitch] = useState(null);
 
-  const [countInBeat, setCountInBeat] = useState(4);
+  const [countInBeat, setCountInBeat] = useState(0);
+  const [backing, setBacking] = useState(() => settingsManager.get('exerciseBacking') !== false);
+  const [sessionError, setSessionError] = useState('');
+  const [reducedMotion, setReducedMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
+  useEffect(() => {
+    const query = matchMedia('(prefers-reduced-motion: reduce)');
+    const change = () => setReducedMotion(query.matches);
+    query.addEventListener('change', change);
+    return () => query.removeEventListener('change', change);
+  }, []);
   const [evaluator, setEvaluator] = useState(null);
   const [recentTapFeedback, setRecentTapFeedback] = useState(null);
   const [combo, setCombo] = useState(0);
   const [result, setResult] = useState(null);
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
   const [activePressedPitch, setActivePressedPitch] = useState(null);
+  const [accidental, setAccidental] = useState(0);
   const [midiDevices, setMidiDevices] = useState(midiManager.getConnectedDevices());
 
   const inputModeRef = useRef(inputMode);
@@ -109,15 +109,27 @@ export default function RhythmTapGame({
   const micActiveRef = useRef(micActive);
   micActiveRef.current = micActive;
 
-  const animationFrameRef = useRef(null);
-  const startTimeRef = useRef(0);
   const evaluatorRef = useRef(null);
+  const timelineRef = useRef(null);
+  const sessionRef = useRef(0);
 
   const isMelodic = level?.section === 'melody';
   const bpm = level?.bpm || 85;
-  const countInBeats = 4;
+  const meter = getMeter(level?.timeSignature);
   const msPerBeat = (60.0 / bpm) * 1000;
-  const totalDurationMs = (countInBeats * msPerBeat) + ((level?.totalSteps || 16) * (msPerBeat / 4.0)) + 600;
+  const countInMs = meter.barSteps * msPerBeat / 4;
+  const hitTime = () => audioEngine.audibleTime() * 1000;
+  const simpleStaff = !settingsManager.get('forceTrebleClef') &&
+    ({ bigram: BIGRAM_ROWS, trigram: TRIGRAM_ROWS }[level.staffType] || null);
+  const simpleY = index => 76 + index * 24;
+  const staffLines = simpleStaff ? simpleStaff.flatMap((row, index) => row.isLine ? [simpleY(index)] : []) : STAFF_LINES;
+  const pitchY = pitch => {
+    const index = simpleStaff?.findIndex(row => row.id === pitch || row.pitch === pitch) ?? -1;
+    return index >= 0 ? simpleY(index) : PITCH_STAFF_Y[pitch] ?? 120;
+  };
+  const visibleSounds = ALL_RHYTHMIC_ROWS.filter(row =>
+    level.targetNotes?.some(note => !note.isRest && (note.sound || 'clap') === row.sound));
+  const rhythmY = index => visibleSounds.length === 1 ? 116 : 34 + index * Math.min(40, 162 / Math.max(1, visibleSounds.length - 1));
 
   // Filter keys based on current level's allowed pitches or show all
   const activePitchKeys = React.useMemo(() => {
@@ -145,10 +157,10 @@ export default function RhythmTapGame({
         setRecentTapFeedback(feedback);
         if (feedback.rating === 'perfect') {
           setCombo(c => c + 1);
-          audioEngine.playFeedbackSound('perfect');
+          if (inputModeRef.current !== 'singing') audioEngine.playFeedbackSound('perfect');
         } else if (feedback.rating === 'good') {
           setCombo(c => c + 1);
-          audioEngine.playFeedbackSound('good');
+          if (inputModeRef.current !== 'singing') audioEngine.playFeedbackSound('good');
         } else {
           setCombo(0);
         }
@@ -158,44 +170,50 @@ export default function RhythmTapGame({
       }
     });
 
-    evalInstance.loadScore(targetNotes, bpm, countInBeats);
+    evalInstance.loadScore(targetNotes, bpm, meter.barSteps / 4);
     setEvaluator(evalInstance);
     evaluatorRef.current = evalInstance;
 
     return () => {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      sessionRef.current++;
+      timelineRef.current = null;
       audioEngine.stopPlayback();
     };
   }, [level, bpm]);
 
   // Handle User Tap on a specific pitch or rhythmic sound
-  const handlePitchTap = useCallback((pitchOrSound) => {
+  const handlePitchTap = useCallback((pitchOrSound, timestamp) => {
     if (gameState !== 'playing' || !evaluatorRef.current) return;
 
     setActivePressedPitch(pitchOrSound);
     setTimeout(() => setActivePressedPitch(null), 180);
 
-    // Audition sound procedurally
+    const midiInput = typeof pitchOrSound === 'object';
+    const semitone = midiInput ? 0 : accidental;
+    const input = isMelodic && semitone && SOLFEGE_MAP[pitchOrSound]
+      ? SOLFEGE_MAP[pitchOrSound].note.replace(/(\d)$/, `${semitone > 0 ? '#' : 'b'}$1`) : pitchOrSound;
+    evaluatorRef.current.registerTap(audioEngine.audibleTime(timestamp) * 1000, input);
+    if (inputModeRef.current === 'singing') return;
     if (isMelodic) {
-      audioEngine.playNote(pitchOrSound, 0.4);
+      audioEngine.playNote(input, 0.4);
     } else {
       audioEngine.playSoundByName(pitchOrSound);
     }
 
-    // Register tap in evaluator with pitch match
-    evaluatorRef.current.registerTap(performance.now(), pitchOrSound);
-  }, [gameState, isMelodic]);
+  }, [gameState, isMelodic, accidental]);
 
   // Universal tap (Spacebar)
   const handleUniversalTap = useCallback(() => {
-    if (gameState !== 'playing' || !evaluatorRef.current) return;
-    evaluatorRef.current.registerTap(performance.now(), null);
-  }, [gameState]);
+    if (isMelodic || gameState !== 'playing' || !evaluatorRef.current) return;
+    evaluatorRef.current.registerTap(hitTime(), null);
+    audioEngine.playSoundByName('clap', null, 0.3);
+  }, [gameState, isMelodic]);
 
   // Keyboard listener for Spacebar, letters (A, S, D, F, G, H, J, K), and digits (1-8)
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.repeat) return;
+      if (e.repeat || e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey ||
+          e.target.closest?.('button,input,textarea,select,[contenteditable]')) return;
 
       if (e.code === 'Space') {
         e.preventDefault();
@@ -210,23 +228,23 @@ export default function RhythmTapGame({
       if (gameState === 'playing') {
         if (isMelodic && KEYBOARD_PITCH_MAP[e.code]) {
           e.preventDefault();
-          handlePitchTap(KEYBOARD_PITCH_MAP[e.code]);
+          handlePitchTap(KEYBOARD_PITCH_MAP[e.code], e.timeStamp);
         } else if (!isMelodic && KEYBOARD_RHYTHM_MAP[e.code]) {
           e.preventDefault();
-          handlePitchTap(KEYBOARD_RHYTHM_MAP[e.code]);
+          handlePitchTap(KEYBOARD_RHYTHM_MAP[e.code], e.timeStamp);
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState, isMelodic, handleUniversalTap, handlePitchTap]);
+  });
 
   // External MIDI Keyboard listener
   useEffect(() => {
     const unsubMidi = midiManager.onNote((noteData) => {
-      if (gameState === 'playing') {
-        handlePitchTap(noteData.solfege);
+      if (gameState === 'playing' && isMelodic) {
+        handlePitchTap({ midi: noteData.midiNote, label: noteData.label }, noteData.timestamp);
       }
     });
 
@@ -238,7 +256,7 @@ export default function RhythmTapGame({
       unsubMidi();
       unsubMidiStatus();
     };
-  }, [gameState, handlePitchTap]);
+  }, [gameState, handlePitchTap, isMelodic]);
 
   // Microphone toggle & cleanup
   const toggleMicrophone = async () => {
@@ -248,12 +266,12 @@ export default function RhythmTapGame({
       setLivePitch(null);
     } else {
       try {
-        await pitchDetector.start((pitch) => {
+        const started = await pitchDetector.start((pitch) => {
           setLivePitch(pitch);
         });
-        setMicActive(true);
+        if (started) setMicActive(true);
       } catch (err) {
-        alert('Impossibile accedere al microfono. Verifica che i permessi audio siano concessi al browser o al sistema.');
+        setSessionError('Microfono non disponibile. Controlla i permessi del sistema.');
       }
     }
   };
@@ -265,100 +283,70 @@ export default function RhythmTapGame({
   }, []);
 
   const handlePlayReferencePitch = () => {
-    const p = level?.targetNotes?.find(n => !n.isRest && n.pitch)?.pitch || 'DO';
-    audioEngine.playReferencePitch(p, 2.5);
+    if (gameState === 'playing' || gameState === 'counting') return;
+    const note = level?.targetNotes?.find(n => !n.isRest && n.pitch);
+    audioEngine.playReferencePitch(note?.pitch || 'DO', 2.5, null, note?.accidental || 0);
   };
 
   // Start Count-in and Game Session
-  const startSession = () => {
-    if (!evaluatorRef.current) return;
+  const startSession = async () => {
+    if (!evaluatorRef.current || gameState === 'counting' || gameState === 'playing') return;
+    const session = ++sessionRef.current;
+    audioEngine.stopPlayback();
+    setIsPlayingTarget(false);
+    setSessionError('');
     setGameState('counting');
+    setCountInBeat(0);
+    setAccidental(0);
+    setCurrentTimeMs(-countInMs);
     setResult(null);
     setCombo(0);
     setRecentTapFeedback(null);
 
-    const firstPitch = level?.targetNotes?.find(n => !n.isRest && n.pitch)?.pitch || 'DO';
-    // If in singing mode, play the starting intonation pitch during count-in so choir tunes up!
-    if (isMelodic && inputMode === 'singing') {
-      audioEngine.playReferencePitch(firstPitch, (countInBeats * msPerBeat * 0.9) / 1000);
+    try {
+      const singing = isMelodic && inputMode === 'singing';
+      const audioReady = audioEngine.prepare();
+      if (singing && !micActiveRef.current) await Promise.all([audioReady, toggleMicrophone()]);
+      else await audioReady;
+      if (session !== sessionRef.current) return;
+      if (singing && !pitchDetector.isListening) {
+        throw new Error('Attiva il microfono o scegli la modalità Tasti.');
+      }
+      const beats = evaluatorRef.current;
+      const melody = level.targetNotes || [];
+      const timeline = await audioEngine.startScorePlayback({
+        bpm, totalSteps: level.totalSteps || 16, timeSignature: level.timeSignature,
+        countIn: true, playMetronome: true, endPadding: 0.6,
+        backing: backing ? (isMelodic ? 'melody' : 'rhythm') : null,
+        melody,
+        reference: singing ? melody.find(note => !note.isRest && note.pitch) : null,
+        tracks: backing && !singing && level.targetNotesTrack2 ? [{ notes: level.targetNotesTrack2 }] : [],
+      }, ({ elapsedMs, count }) => {
+        setCurrentTimeMs(Math.max(-countInMs, elapsedMs));
+        setCountInBeat(count);
+        if (elapsedMs < 0) return;
+        setGameState('playing');
+        const now = hitTime();
+        if (singing && micActiveRef.current) beats.registerSingingDetection(now, pitchDetector.latestPitch);
+        beats.updateCurrentTime(now);
+      }, () => { if (timelineRef.current) finishSession(); }, error => console.error(error));
+      if (session !== sessionRef.current) return;
+      if (!timeline) throw new Error("Impossibile avviare l'audio.");
+      timelineRef.current = timeline;
+      beats.start(timeline.start * 1000);
+    } catch (error) {
+      if (session !== sessionRef.current) return;
+      setSessionError(error.message);
+      setGameState('ready');
     }
-
-    // Audio metronome for count-in: 4 beats
-    let currentCount = countInBeats;
-    setCountInBeat(currentCount);
-    audioEngine.playMetronome(1);
-
-    const countInterval = setInterval(() => {
-      currentCount--;
-      if (currentCount > 0) {
-        setCountInBeat(currentCount);
-        audioEngine.playMetronome(currentCount === 4 ? 1 : 2);
-      } else {
-        clearInterval(countInterval);
-        launchPlayback();
-      }
-    }, msPerBeat);
-  };
-
-  const launchPlayback = async () => {
-    setGameState('playing');
-    const startMs = performance.now();
-    startTimeRef.current = startMs;
-    evaluatorRef.current.start(startMs - (countInBeats * msPerBeat));
-
-    if (inputModeRef.current === 'singing' && !micActiveRef.current) {
-      try {
-        await toggleMicrophone();
-      } catch (err) {
-        console.warn('Microphone activation notice:', err);
-      }
-    }
-
-    // Play backing track / metronome with harmonic accompaniment for choir singing
-    const score = {
-      bpm,
-      totalSteps: level.totalSteps || 16,
-      playMetronome: true,
-      harmonicAccompaniment: isMelodic && inputModeRef.current === 'singing',
-      tracks: [
-        {
-          notes: level.targetNotes || [],
-        }
-      ]
-    };
-    audioEngine.startScorePlayback(score);
-
-    // Animation / evaluation tick loop
-    const tick = () => {
-      const now = performance.now();
-      const elapsed = now - startMs;
-      setCurrentTimeMs(elapsed);
-
-      if (evaluatorRef.current) {
-        // Real-time microphone singing detection for children's choir
-        if (inputModeRef.current === 'singing' && micActiveRef.current && pitchDetector.latestPitch) {
-          const hit = evaluatorRef.current.registerSingingDetection(now, pitchDetector.latestPitch);
-          if (hit) {
-            setCombo(c => c + 1);
-            audioEngine.playFeedbackSound(hit.rating === 'perfect' ? 'perfect' : 'good');
-          }
-        }
-        evaluatorRef.current.updateCurrentTime(now);
-      }
-
-      if (elapsed >= (totalDurationMs - (countInBeats * msPerBeat))) {
-        finishSession();
-      } else {
-        animationFrameRef.current = requestAnimationFrame(tick);
-      }
-    };
-
-    animationFrameRef.current = requestAnimationFrame(tick);
   };
 
   const finishSession = () => {
-    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    timelineRef.current = null;
     audioEngine.stopPlayback();
+    pitchDetector.stop();
+    setMicActive(false);
+    setLivePitch(null);
 
     if (evaluatorRef.current) {
       const finalResult = evaluatorRef.current.finish();
@@ -368,6 +356,7 @@ export default function RhythmTapGame({
       if (finalResult.stars >= 1) {
         audioEngine.playSuccessFanfare();
         confetti({
+          disableForReducedMotion: true,
           particleCount: finalResult.stars === 3 ? 120 : 60,
           spread: 75,
           origin: { y: 0.6 },
@@ -397,6 +386,7 @@ export default function RhythmTapGame({
     audioEngine.setBpm(bpm);
     const score = {
       bpm,
+      timeSignature: level.timeSignature,
       totalSteps: level.totalSteps || 16,
       playMetronome: true,
       tracks: [
@@ -408,7 +398,7 @@ export default function RhythmTapGame({
   };
 
   return (
-    <div className="flex flex-col h-full bg-montessori-cream rounded-3xl border-2 border-amber-200/90 shadow-playful p-6 overflow-hidden select-none">
+    <div className="studio-panel exercise-panel flex flex-col h-full p-4 lg:p-6 overflow-hidden select-none">
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b-2 border-amber-100 flex-shrink-0">
         <div>
@@ -454,7 +444,7 @@ export default function RhythmTapGame({
       </div>
 
       {/* Main Game Stage */}
-      <div className="flex-1 flex flex-col items-center justify-center relative py-4 overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center relative py-4 overflow-y-auto">
         {gameState === 'ready' && (
           <div className="text-center max-w-lg p-6 bg-white rounded-3xl shadow-playful border border-amber-100 animate-fade-in my-auto">
             <div className="w-16 h-16 mx-auto mb-3 bg-amber-100 rounded-full flex items-center justify-center text-3xl shadow-inner">
@@ -548,6 +538,14 @@ export default function RhythmTapGame({
               </ul>
             </div>
 
+            <label className="backing-toggle">
+              <input type="checkbox" checked={backing} onChange={event => {
+                setBacking(event.target.checked);
+                settingsManager.set('exerciseBacking', event.target.checked);
+              }} />
+              <span><strong>Accompagnamento MIDI</strong><small>{inputMode === 'singing' ? 'Usa le cuffie per non far rientrare la base nel microfono.' : 'Base campionata; il metronomo resta sempre attivo.'}</small></span>
+            </label>
+            {sessionError && <p role="alert" className="mb-3 text-sm text-rose-800">{sessionError}</p>}
             {/* Action Buttons: Listen Correct Version + Start Game */}
             <div className="flex flex-col sm:flex-row items-center gap-3">
               <button
@@ -591,8 +589,8 @@ export default function RhythmTapGame({
                     ? "🎶 Prendi l'intonazione e preparati..."
                     : 'Ascolta il conteggio del metronomo...'}
                 </div>
-                <div className="w-24 h-24 bg-amber-400 text-amber-950 font-black text-6xl rounded-full flex items-center justify-center shadow-playful border-4 border-amber-300">
-                  {countInBeat}
+                <div className="count-dial" aria-label={countInBeat ? `Conteggio: ${countInBeat}` : 'Preparazione audio'}>
+                  {countInBeat || '…'}
                 </div>
                 <div className="mt-2 text-[11px] font-black text-slate-700 bg-white/95 px-3 py-1 rounded-full border border-amber-200 shadow-xs whitespace-nowrap">
                   👀 Le note arrivano qui: al via suona a ritmo!
@@ -633,38 +631,9 @@ export default function RhythmTapGame({
             {isMelodic && (
               <div className="w-full flex flex-col gap-2 mb-3">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 bg-amber-100/70 p-1 rounded-2xl border border-amber-200">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setInputMode('tap');
-                        if (micActive) toggleMicrophone();
-                      }}
-                      className={`py-1.5 px-3 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-                        inputMode === 'tap'
-                          ? 'bg-white text-amber-950 shadow-playful-sm border border-amber-300'
-                          : 'text-amber-800 hover:bg-white/50'
-                      }`}
-                    >
-                      <Keyboard className="w-3.5 h-3.5" />
-                      <span>🎹 Tasti / MIDI</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setInputMode('singing');
-                        if (!micActive) toggleMicrophone();
-                      }}
-                      className={`py-1.5 px-3 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-                        inputMode === 'singing'
-                          ? 'bg-purple-600 text-white shadow-playful-sm border border-purple-700'
-                          : 'text-amber-800 hover:bg-white/50'
-                      }`}
-                    >
-                      <Mic className="w-3.5 h-3.5" />
-                      <span>🎤 Modalità Canto (Microfono)</span>
-                    </button>
-                  </div>
+                  <span className="text-xs font-bold text-indigo-900">
+                    {inputMode === 'singing' ? 'Canto · Microfono' : 'Esecuzione · Tasti / MIDI'}
+                  </span>
 
                   {inputMode === 'singing' && (
                     <button
@@ -690,15 +659,6 @@ export default function RhythmTapGame({
                       <span className="text-xs font-black text-purple-950">
                         {micActive ? 'Microfono Coro Attivo' : 'Microfono Non Attivo'}
                       </span>
-                      <button
-                        type="button"
-                        onClick={handlePlayReferencePitch}
-                        title="Riascolta la nota di partenza"
-                        className="btn-playful px-2 py-0.5 bg-purple-200 hover:bg-purple-300 active:bg-purple-400 text-purple-900 text-[10px] font-black rounded-lg flex items-center gap-1 border border-purple-300 cursor-pointer shadow-2xs ml-1"
-                      >
-                        <Volume2 className="w-3 h-3" />
-                        <span>Ascolta Intonazione 🔔</span>
-                      </button>
                     </div>
 
                     {micActive ? (
@@ -761,11 +721,11 @@ export default function RhythmTapGame({
             )}
 
             {/* MUSICAL STAFF HIGHWAY - Authentic Staff with Scrolling Notes */}
-            <div className="w-full h-60 bg-[#FDFBF7] rounded-3xl border-2 border-amber-200 shadow-playful-sm relative overflow-hidden px-4 mb-5 select-none">
+            <div className="practice-rail w-full h-60 relative overflow-hidden mb-3 select-none" aria-label="Rigo dell'esercizio">
               {isMelodic ? (
                 <>
                   {/* Pentagram 5 Staff Lines: [48, 72, 96, 120, 144] */}
-                  {STAFF_LINES.map((yLine, idx) => (
+                  {staffLines.map((yLine, idx) => (
                     <div
                       key={idx}
                       className="absolute left-0 right-0 h-[2px] bg-slate-400/80 pointer-events-none"
@@ -774,12 +734,9 @@ export default function RhythmTapGame({
                   ))}
 
                   {/* Treble Clef (Chiave di Violino / Sol) */}
-                  <span
-                    className="absolute left-3 top-2 text-7xl text-slate-700/80 font-serif leading-none select-none pointer-events-none"
-                    style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.05))' }}
-                  >
-                    𝄞
-                  </span>
+                  {!simpleStaff && <svg className="absolute left-0 top-0 pointer-events-none" width="60" height="192">
+                    <text x="7" y="120" className="music-glyph" fontSize="92">{"\uE050"}</text>
+                  </svg>}
 
                   {/* Vertical bar line dividing clef */}
                   <div className="absolute left-[58px] top-[48px] bottom-[96px] w-[1px] bg-slate-300 pointer-events-none" />
@@ -787,25 +744,19 @@ export default function RhythmTapGame({
               ) : (
                 /* Rhythmic Body Percussion Tracks */
                 <>
-                  {[
-                    { id: 'snap', name: 'Dita', icon: '🫰', y: 32 },
-                    { id: 'clap', name: 'Mani', icon: '👏', y: 68 },
-                    { id: 'chest', name: 'Petto', icon: '🫀', y: 104 },
-                    { id: 'thighs', name: 'Cosce', icon: '🦵', y: 140 },
-                    { id: 'feet', name: 'Piedi', icon: '🦶', y: 176 },
-                  ].map((track) => (
+                  {visibleSounds.map((track, index) => (
                     <React.Fragment key={track.id}>
                       <div
                         className="absolute left-0 right-0 h-[1px] bg-amber-200/60 pointer-events-none"
-                        style={{ top: `${track.y}px` }}
+                        style={{ top: `${rhythmY(index)}px` }}
                       />
                       <div
                         className="absolute left-2 z-10 flex items-center gap-1 bg-white/90 px-1.5 py-0.5 rounded-lg border border-amber-200 shadow-2xs pointer-events-none"
-                        style={{ top: `${track.y - 12}px` }}
+                        style={{ top: `${rhythmY(index) - 12}px` }}
                       >
                         <span className="text-xs">{track.icon}</span>
                         <span className="text-[9px] font-black text-slate-700 uppercase tracking-tighter hidden sm:inline">
-                          {track.name}
+                          {track.label.split(' (')[0]}
                         </span>
                       </div>
                     </React.Fragment>
@@ -827,7 +778,7 @@ export default function RhythmTapGame({
                   className="absolute z-25 transition-all duration-75 flex items-center pointer-events-none"
                   style={{
                     left: '62px',
-                    top: `${(PITCH_STAFF_Y[livePitch.solfegeKey] ?? 120) - 14}px`,
+                    top: `${pitchY(livePitch.solfegeKey) - 14}px`,
                   }}
                 >
                   <div
@@ -843,26 +794,39 @@ export default function RhythmTapGame({
               )}
 
               {/* Scrolling Notes on the Staff */}
-              {evaluator?.expectedBeats.map((beat) => {
+              {[
+                ...(evaluator?.expectedBeats || []),
+                ...(level.targetNotes || []).filter(note => note.isRest).map(note => ({
+                  ...note, timeMs: countInMs + note.step * msPerBeat / 4, durationSteps: note.duration,
+                })),
+              ].map((beat) => {
                 const targetOffset = 80; // px where target zone is
-                const distancePx = ((beat.timeMs - (countInBeats * msPerBeat) - currentTimeMs) / (msPerBeat / 4)) * 48;
-                const leftPos = targetOffset + distancePx;
+                const distancePx = ((beat.timeMs - countInMs - currentTimeMs) / (msPerBeat / 4)) * 48;
+                const leftPos = targetOffset + (reducedMotion ? Math.round(distancePx / 96) * 96 : distancePx);
 
-                if (leftPos < -60 || leftPos > 760) return null;
+                if (leftPos < -60 || leftPos > 760 || (reducedMotion && Math.abs(distancePx) >= 48)) return null;
+                if (beat.isRest) return (
+                  <svg key={beat.id} className="absolute top-0 overflow-visible pointer-events-none" width="32" height="200"
+                    style={{ transform: `translate3d(${leftPos - 16}px, 0, 0)` }} aria-label="Pausa">
+                    <StaffGlyph x={16} y={isMelodic ? staffLines[Math.floor(staffLines.length / 2)] : 116}
+                      duration={beat.durationSteps} rest color="#475577" />
+                  </svg>
+                );
 
                 if (isMelodic) {
                   const pitchKey = (beat.pitch || 'SOL').toUpperCase();
-                  const topY = PITCH_STAFF_Y[pitchKey] ?? 120;
+                  const topY = pitchY(pitchKey);
                   const solfegeMeta = SOLFEGE_MAP[pitchKey] || { label: beat.pitch, color: '#38BDF8' };
-                  const isMiddleC = pitchKey === 'DO' || pitchKey === 'C4';
-                  const isAboveMiddle = topY < 96; // Notes above middle line Si4 have stem down
+                  const isMiddleC = !simpleStaff && (pitchKey === 'DO' || pitchKey === 'C4');
+                  const isAboveMiddle = topY <= staffLines[Math.floor(staffLines.length / 2)];
 
                   return (
                     <div
                       key={beat.id}
-                      className="absolute z-10 transition-transform pointer-events-none"
+                      className="absolute z-10 pointer-events-none"
                       style={{
-                        left: `${leftPos - 16}px`,
+                        left: 0,
+                        transform: `translate3d(${leftPos - 16}px, 0, 0)`,
                         top: `${topY - 14}px`,
                       }}
                     >
@@ -871,58 +835,22 @@ export default function RhythmTapGame({
                         <KodalyHandSign pitch={pitchKey} size="sm" />
                       </div>
 
-                      {/* Ledger line for Middle Do (C4) */}
-                      {isMiddleC && (
-                        <div className="absolute -left-2 -right-2 top-1/2 -translate-y-1/2 h-[2px] bg-slate-800 pointer-events-none z-0" />
-                      )}
-
-                      {/* Notehead */}
-                      <div
-                        className={`w-8 h-7 rounded-[50%] border-2 border-slate-900 shadow-md flex items-center justify-center font-black relative z-10 ${
-                          beat.rating === 'perfect'
-                            ? 'ring-2 ring-emerald-400 bg-emerald-400 text-white'
-                            : beat.rating === 'good'
-                            ? 'ring-2 ring-amber-400 bg-amber-400 text-amber-950'
-                            : beat.rating === 'wrong_pitch'
-                            ? 'ring-2 ring-purple-400 bg-purple-400 text-purple-950'
-                            : beat.rating === 'missed'
-                            ? 'bg-rose-200 text-rose-600 opacity-60'
-                            : 'text-white'
-                        }`}
-                        style={{
-                          backgroundColor: !beat.rating ? (solfegeMeta.color || '#38BDF8') : undefined,
-                        }}
-                      >
-                        <span className="text-[10px] leading-none drop-shadow-xs">
-                          {solfegeMeta.label || beat.pitch}
-                        </span>
-
-                        {/* Rating Badge */}
-                        {beat.rating && (
-                          <span className="absolute -top-3.5 -right-2 text-xs">
-                            {beat.rating === 'perfect' && '⭐'}
-                            {beat.rating === 'good' && '👍'}
-                            {beat.rating === 'wrong_pitch' && '⚠️'}
-                            {beat.rating === 'missed' && '❌'}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Note Stem */}
-                      {isAboveMiddle ? (
-                        <div className="absolute left-0 top-3.5 w-[2.5px] h-8 bg-slate-900 rounded-full z-0" />
-                      ) : (
-                        <div className="absolute right-0 bottom-3.5 w-[2.5px] h-8 bg-slate-900 rounded-full z-0" />
-                      )}
+                      <svg className="block overflow-visible pointer-events-none" width="32" height="28" aria-hidden="true">
+                        <StaffGlyph x={16} y={14} duration={beat.durationSteps} stemUp={!isAboveMiddle}
+                          ledger={isMiddleC} accidental={beat.accidental || null}
+                          color={beat.rating === 'missed' ? '#be123c' : beat.matched ? '#0f766e' : '#25304a'} />
+                      </svg>
+                      <span className="exercise-note-label">{solfegeMeta.label || beat.pitch}</span>
                     </div>
                   );
                 } else {
                   // Rhythmic Beat
-                  const topY = RHYTHM_TRACK_Y[beat.sound || 'clap'] || 68;
+                  const lane = visibleSounds.findIndex(row => row.sound === (beat.sound || 'clap'));
+                  const topY = rhythmY(Math.max(0, lane));
                   return (
                     <div
                       key={beat.id}
-                      className={`absolute z-10 w-9 h-9 rounded-2xl flex items-center justify-center text-sm font-black transition-all shadow-md border-2 ${
+                      className={`absolute z-10 w-9 h-9 rounded-2xl flex items-center justify-center text-sm font-black shadow-md border-2 ${
                         beat.rating === 'perfect'
                           ? 'bg-emerald-400 text-white border-emerald-600 ring-2 ring-emerald-300'
                           : beat.rating === 'good'
@@ -932,12 +860,13 @@ export default function RhythmTapGame({
                           : 'bg-amber-400 text-amber-950 border-slate-800'
                       }`}
                       style={{
-                        left: `${leftPos - 18}px`,
+                        left: 0,
+                        transform: `translate3d(${leftPos - 18}px, 0, 0)`,
                         top: `${topY - 18}px`,
                       }}
                     >
                       <span className="text-lg">
-                        {beat.sound === 'clap' ? '👏' : beat.sound === 'feet' ? '🦶' : beat.sound === 'thighs' ? '🦵' : beat.sound === 'chest' ? '🫀' : beat.sound === 'snap' ? '🫰' : '🎵'}
+                        {visibleSounds[lane]?.icon || '🎵'}
                       </span>
                       {beat.rating && (
                         <span className="absolute -top-2 -right-2 text-[10px]">
@@ -951,6 +880,17 @@ export default function RhythmTapGame({
                 }
               })}
             </div>
+            <progress className="lesson-progress mb-2" aria-label="Avanzamento esercizio" max={level.totalSteps || 16}
+              value={Math.min(level.totalSteps || 16, Math.max(0, currentTimeMs / (msPerBeat / 4)))} />
+            <button className="mb-3 text-sm font-bold text-indigo-800" onClick={() => {
+              sessionRef.current++;
+              timelineRef.current = null;
+              audioEngine.stopPlayback();
+              pitchDetector.stop();
+              setMicActive(false);
+              setLivePitch(null);
+              setGameState('ready');
+            }}>Interrompi e torna alla preparazione</button>
 
             {/* INTERACTIVE INPUT STAGE: Melodic Touch Keyboard vs Rhythmic Tap */}
             {isMelodic ? (
@@ -962,6 +902,13 @@ export default function RhythmTapGame({
                     <span>🎹 Suona le note: Touch su schermo, tasti PC [A-K] o tastiera MIDI</span>
                   )}
                 </div>
+                {level.targetNotes?.some(note => note.accidental) && inputMode !== 'singing' && (
+                  <div className="mb-2 flex justify-center gap-2" aria-label="Alterazioni della tastiera">
+                    {[[0, '♮ Naturale'], [1, '♯ Diesis'], [-1, '♭ Bemolle']].map(([value, label]) =>
+                      <button key={value} className="editor-icon" aria-pressed={accidental === value}
+                        onClick={() => setAccidental(value)}>{label}</button>)}
+                  </div>
+                )}
 
                 {/* Touch Piano / Orff Chime Bars */}
                 <div className="grid grid-cols-4 sm:grid-cols-8 gap-2.5 w-full">
@@ -972,11 +919,8 @@ export default function RhythmTapGame({
                     return (
                       <button
                         key={pKey}
-                        onMouseDown={() => handlePitchTap(pKey)}
-                        onTouchStart={(e) => {
-                          e.preventDefault();
-                          handlePitchTap(pKey);
-                        }}
+                        onPointerDown={e => { if (e.button === 0) handlePitchTap(pKey, e.timeStamp); }}
+                        onClick={e => { if (e.detail === 0) handlePitchTap(pKey); }}
                         className={`btn-playful py-4 px-2 rounded-2xl flex flex-col items-center justify-between transition-all transform select-none cursor-pointer border-2 ${
                           isPressed ? 'scale-95 ring-4 ring-amber-400 brightness-110' : 'hover:scale-[1.03]'
                         }`}
@@ -1046,7 +990,8 @@ export default function RhythmTapGame({
 
                 {/* Giant Spacebar Tap Button */}
                 <button
-                  onMouseDown={handleUniversalTap}
+                  onPointerDown={e => { if (e.button === 0) handleUniversalTap(); }}
+                  onClick={e => { if (e.detail === 0) handleUniversalTap(); }}
                   className="btn-playful w-72 h-20 bg-gradient-to-b from-emerald-400 to-emerald-600 active:from-emerald-600 active:to-emerald-700 text-white rounded-3xl shadow-playful flex flex-col items-center justify-center text-lg font-black gap-0.5 cursor-pointer select-none"
                 >
                   <span>BATTI IL TEMPO!</span>
@@ -1108,15 +1053,9 @@ export default function RhythmTapGame({
                 <span>Riprova</span>
               </button>
 
-              {(onNextLevel || onComplete) && (
+              {onNextLevel && result.stars > 0 && (
                 <button
-                  onClick={() => {
-                    if (onComplete) {
-                      onComplete({ levelId: level.id, stars: result.stars, accuracy: result.accuracy });
-                    } else if (onNextLevel) {
-                      onNextLevel();
-                    }
-                  }}
+                  onClick={onNextLevel}
                   className="btn-playful flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black flex items-center justify-center gap-2 shadow-emerald-200"
                 >
                   <span>Prossimo Livello</span>

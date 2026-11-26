@@ -48,6 +48,7 @@ export class PitchDetector {
     this.analyser = null;
     this.buffer = null;
     this.isListening = false;
+    this.requestId = 0;
     this.animFrameId = null;
     this.listeners = new Set();
     this.latestPitch = null;
@@ -60,6 +61,7 @@ export class PitchDetector {
 
   async start(onPitch) {
     if (this.isListening) return;
+    const request = ++this.requestId;
 
     try {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -68,13 +70,18 @@ export class PitchDetector {
         await this.audioCtx.resume();
       }
 
-      this.mediaStream = await navigator.mediaDevices.getUserMedia({
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
         },
       });
+      if (request !== this.requestId) {
+        stream.getTracks().forEach(track => track.stop());
+        return false;
+      }
+      this.mediaStream = stream;
 
       this.sourceNode = this.audioCtx.createMediaStreamSource(this.mediaStream);
       this.analyser = this.audioCtx.createAnalyser();
@@ -86,18 +93,21 @@ export class PitchDetector {
       this.sourceNode.connect(this.analyser);
 
       this.isListening = true;
-      if (onPitch) this.subscribe(onPitch);
+      if (onPitch) this.unsubscribeSession = this.subscribe(onPitch);
 
       this._detectLoop();
       return true;
     } catch (err) {
       console.warn('Microphone access denied or error in PitchDetector:', err);
-      this.stop();
+      if (request === this.requestId) this.stop();
       throw err;
     }
   }
 
   stop() {
+    this.requestId++;
+    this.unsubscribeSession?.();
+    this.unsubscribeSession = null;
     this.isListening = false;
     if (this.animFrameId) {
       cancelAnimationFrame(this.animFrameId);

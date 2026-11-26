@@ -1,18 +1,17 @@
 {
   "name": "ritmolab",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "RitmoLab - Laboratorio Desktop per l'Educazione Musicale nella Scuola Primaria",
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/build-standalone-html.js",
-    "build:html": "vite build && node scripts/build-standalone-html.js",
+    "build": "vite build",
+    "test": "node src/tests/curriculum-evaluator.test.js && node --test src/tests/transport.test.js",
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"cross-env ELECTRON_DEV=true wait-on tcp:5173 && electron electron/main.cjs\"",
-    "electron:build": "vite build && electron-builder",
-    "main": "main.js",
-    "start": "electron ."
+    "electron:build": "node scripts/installers/package.mjs",
+    "start": "npm run electron:dev"
   },
   "keywords": [
     "music",
@@ -21,7 +20,7 @@
     "orff",
     "kodaly",
     "body-percussion",
-    "audio-synthesis"
+    "sampled-audio"
   ],
   "author": "RitmoLab Team",
   "license": "CC-BY-4.0",

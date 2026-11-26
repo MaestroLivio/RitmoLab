@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Volume2, Play, CheckCircle2, XCircle, RotateCcw, ArrowRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { audioEngine } from '../engine/AudioEngine';
@@ -13,25 +13,39 @@ export default function DictationGame({
   const [selectedOptionId, setSelectedOptionId] = useState(null);
   const [evaluated, setEvaluated] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [audioError, setAudioError] = useState(false);
+  useEffect(() => () => audioEngine.stopPlayback(), [level.id]);
 
   const handleListen = () => {
+    if (isPlayingAudio) {
+      audioEngine.stopPlayback();
+      setIsPlayingAudio(false);
+      return;
+    }
     setIsPlayingAudio(true);
+    setAudioError(false);
+    setProgress(0);
     audioEngine.setBpm(level.bpm || 80);
     const score = {
       bpm: level.bpm || 80,
       totalSteps: level.totalSteps || 16,
+      timeSignature: level.timeSignature,
+      countIn: true,
       playMetronome: true,
       tracks: [
         {
           notes: level.targetNotes || [],
-        }
+        },
+        ...(level.targetNotesTrack2 ? [{ notes: level.targetNotesTrack2 }] : []),
       ]
     };
 
     audioEngine.startScorePlayback(
       score,
-      null,
-      () => setIsPlayingAudio(false)
+      ({ position }) => setProgress(position),
+      () => setIsPlayingAudio(false),
+      () => setAudioError(true)
     );
   };
 
@@ -42,6 +56,10 @@ export default function DictationGame({
 
   const handleVerify = () => {
     if (!selectedOptionId) return;
+    if (isPlayingAudio) {
+      audioEngine.stopPlayback();
+      setIsPlayingAudio(false);
+    }
     const chosen = level.options?.find(o => o.id === selectedOptionId);
     const correct = chosen?.isCorrect;
     setIsCorrect(correct);
@@ -49,7 +67,7 @@ export default function DictationGame({
 
     if (correct) {
       audioEngine.playSuccessFanfare();
-      confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
+      confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 }, disableForReducedMotion: true });
       if (onComplete) {
         onComplete({ levelId: level.id, stars: 3, accuracy: 100 });
       }
@@ -65,7 +83,7 @@ export default function DictationGame({
   };
 
   return (
-    <div className="flex flex-col h-full bg-montessori-cream rounded-3xl border-2 border-amber-200/90 shadow-playful p-6 overflow-hidden select-none">
+    <div className="studio-panel flex flex-col h-full p-5 overflow-auto select-none">
       {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b-2 border-amber-100">
         <div>
@@ -110,16 +128,17 @@ export default function DictationGame({
         <div className="mb-6 text-center">
           <button
             onClick={handleListen}
-            disabled={isPlayingAudio}
             className={`btn-playful px-8 py-5 rounded-3xl text-white text-lg font-black flex items-center gap-3 shadow-playful mx-auto ${
               isPlayingAudio
-                ? 'bg-amber-500 animate-pulse'
+                ? 'bg-indigo-800'
                 : 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 shadow-purple-200'
             }`}
           >
             <Volume2 className="w-7 h-7" />
-            <span>{isPlayingAudio ? 'In Riproduzione...' : 'Ascolta il Ritmo'}</span>
+            <span>{isPlayingAudio ? 'Interrompi ascolto' : 'Ascolta il dettato'}</span>
           </button>
+          <progress className="lesson-progress mt-3" aria-label="Avanzamento ascolto" value={progress} max={level.totalSteps || 16} />
+          {audioError && <p role="alert">Audio non disponibile. Prova a riavviare RitmoLab.</p>}
           <span className="text-xs text-slate-500 font-semibold block mt-2">
             Puoi ascoltare quante volte vuoi prima di rispondere!
           </span>
@@ -142,10 +161,12 @@ export default function DictationGame({
             }
 
             return (
-              <div
+              <button type="button"
                 key={opt.id}
                 onClick={() => handleSelectOption(opt)}
-                className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between shadow-playful-sm ${borderStyle}`}
+                aria-pressed={isSelected}
+                disabled={evaluated}
+                className={`w-full text-left p-4 rounded-2xl border-2 cursor-pointer flex items-center justify-between shadow-playful-sm ${borderStyle}`}
               >
                 <span className="text-sm font-black">{opt.label}</span>
                 {evaluated && opt.isCorrect && (
@@ -154,7 +175,7 @@ export default function DictationGame({
                 {evaluated && isSelected && !opt.isCorrect && (
                   <XCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -182,15 +203,9 @@ export default function DictationGame({
               <span>Riprova</span>
             </button>
 
-            {isCorrect && (onComplete || onNextLevel) && (
+            {isCorrect && onNextLevel && (
               <button
-                onClick={() => {
-                  if (onComplete) {
-                    onComplete({ levelId: level.id, stars: 3, accuracy: 100 });
-                  } else if (onNextLevel) {
-                    onNextLevel();
-                  }
-                }}
+                onClick={onNextLevel}
                 className="btn-playful flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black flex items-center justify-center gap-2 shadow-emerald-200"
               >
                 <span>Prossimo Livello</span>

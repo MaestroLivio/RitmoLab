@@ -60,6 +60,7 @@ export class SettingsManager {
       masterVolume: 0.85,
       metronomeVolume: 0.7,
       melodicInstrument: 'xylophone',
+      exerciseBacking: true,
       midiEnabled: true,
       midiDeviceName: null,
       showKeyboardShortcuts: true,

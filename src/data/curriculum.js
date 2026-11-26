@@ -12,6 +12,7 @@ export const FIGURE_DURATIONS = {
   sixteenth: 1,
   rest_quarter: 4,
   rest_eighth: 2,
+  rest_sixteenth: 1,
   rest_half: 8,
   rest_whole: 16,
 };
@@ -24,6 +25,7 @@ export const FIGURE_INFO = {
   sixteenth: { label: 'Sedicesimo 1/16', symbol: '♬', beats: 0.25, duration: 1, category: 'note' },
   rest_quarter: { label: 'Pausa di Quarto 1/4', symbol: '𝄽', beats: 1, duration: 4, isRest: true, category: 'rest' },
   rest_eighth: { label: 'Pausa di Ottavo 1/8', symbol: '𝄾', beats: 0.5, duration: 2, isRest: true, category: 'rest' },
+  rest_sixteenth: { label: 'Pausa di Sedicesimo 1/16', symbol: '𝄿', beats: 0.25, duration: 1, isRest: true, category: 'rest' },
   rest_half: { label: 'Pausa di Metà 2/4', symbol: '𝄼', beats: 2, duration: 8, isRest: true, category: 'rest' },
   rest_whole: { label: 'Pausa di Intero 4/4', symbol: '𝄻', beats: 4, duration: 16, isRest: true, category: 'rest' },
 };

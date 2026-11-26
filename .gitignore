@@ -10,7 +10,7 @@ dist/
 *.local
 
 # Installer (i binari si distribuiscono tramite le Release GitHub,
-# non dentro il repository: si rigenerano con scripts/installers/build-all.sh)
+# non dentro il repository: si rigenerano con npm run electron:build)
 installers/**/*.dmg
 installers/**/*.pkg
 installers/**/*.exe

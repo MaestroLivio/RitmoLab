@@ -113,10 +113,11 @@ export class RhythmEvaluator {
       closestBeat.playedPitch = playedPitch;
 
       // Check pitch match if pitch is expected and provided
-      if (closestBeat.pitch && playedPitch) {
-        const expectedP = closestBeat.pitch.toUpperCase().replace('4', '').replace('5', '');
-        const playedP = playedPitch.toUpperCase().replace('4', '').replace('5', '');
-        isPitchCorrect = expectedP === playedP;
+      if (closestBeat.pitch) {
+        isPitchCorrect = playedPitch != null &&
+          toMidi(closestBeat.pitch, closestBeat.accidental) === toMidi(playedPitch);
+      } else if (playedPitch) {
+        isPitchCorrect = closestBeat.sound === playedPitch;
       }
 
       if (!isPitchCorrect) {
@@ -139,8 +140,8 @@ export class RhythmEvaluator {
       rating,
       isPitchCorrect,
       matchedId: closestBeat?.id || null,
-      expectedPitch: closestBeat?.pitch || null,
-      playedPitch: playedPitch || closestBeat?.sound || 'clap',
+      expectedPitch: closestBeat?.pitch || closestBeat?.sound || null,
+      playedPitch: playedPitch?.label ?? playedPitch ?? closestBeat?.sound ?? 'clap',
       timingText: minDiff > 0 ? `+${Math.round(minDiff)}ms` : `${Math.round(minDiff)}ms`,
     };
 
@@ -166,9 +167,9 @@ export class RhythmEvaluator {
 
     // Find candidate beats active in their window (including sustained duration + tolerance)
     const candidateBeats = this.expectedBeats.filter(b => {
-      if (!b.pitch) return false;
+      if (!b.pitch || b.matched) return false;
       const noteDur = b.durationMs || ((b.durationSteps || 4) * (this.msPer16th || 150));
-      const windowStart = b.timeMs - this.toleranceGoodMs;
+      const windowStart = b.timeMs;
       const windowEnd = b.timeMs + noteDur + this.toleranceGoodMs;
       return elapsedMs >= windowStart && elapsedMs <= windowEnd;
     });
@@ -182,36 +183,18 @@ export class RhythmEvaluator {
       return Math.abs(elapsedMs - a.timeMs) - Math.abs(elapsedMs - b.timeMs);
     });
 
-    const beat = candidateBeats[0];
+    const sung = detectedPitch.midi ?? toMidi(detectedPitch.scientific || detectedPitch.solfegeKey);
+    const beat = candidateBeats.find(item => {
+      const expected = toMidi(item.pitch, item.accidental);
+      return sung != null && expected != null && (expected - sung) % 12 === 0;
+    });
 
-    // Normalize expected note vs detected note (octave invariant)
-    let expectedNorm = (beat.pitch || '').toUpperCase().trim();
-    if (expectedNorm.startsWith('DO_HIGH') || expectedNorm === 'C5') expectedNorm = 'DO';
-    else if (expectedNorm.startsWith('DO') || expectedNorm === 'C4') expectedNorm = 'DO';
-    else if (expectedNorm.startsWith('RE') || expectedNorm === 'D4') expectedNorm = 'RE';
-    else if (expectedNorm.startsWith('MI') || expectedNorm === 'E4') expectedNorm = 'MI';
-    else if (expectedNorm.startsWith('FA') || expectedNorm === 'F4') expectedNorm = 'FA';
-    else if (expectedNorm.startsWith('SOL') || expectedNorm === 'G4') expectedNorm = 'SOL';
-    else if (expectedNorm.startsWith('LA') || expectedNorm === 'A4') expectedNorm = 'LA';
-    else if (expectedNorm.startsWith('SI') || expectedNorm === 'B4') expectedNorm = 'SI';
-
-    let sungNorm = (detectedPitch.solfegeKey || '').toUpperCase().trim();
-    if (sungNorm.startsWith('DO_HIGH')) sungNorm = 'DO';
-    sungNorm = sungNorm.replace('_SHARP', ''); // Forgiving of sharp/flat nuances in children
-
-    const isMatch = expectedNorm === sungNorm;
-
-    if (isMatch) {
-      // If already matched with perfect, keep perfect
-      if (beat.matched && beat.rating === 'perfect') {
-        return null;
-      }
-
+    if (beat) {
       const diffMs = elapsedMs - beat.timeMs;
       beat.matched = true;
       beat.userTapTime = elapsedMs;
       beat.diffMs = diffMs;
-      beat.playedPitch = detectedPitch.solfegeLabel || detectedPitch.noteName || expectedNorm;
+      beat.playedPitch = detectedPitch.solfegeLabel || detectedPitch.noteName || beat.pitch;
 
       const centsAbs = Math.abs(detectedPitch.cents || 0);
       const rating = (Math.abs(diffMs) <= this.tolerancePerfectMs && centsAbs <= 45)
@@ -332,3 +315,4 @@ export class RhythmEvaluator {
     };
   }
 }
+import { toMidi } from './Transport.js';

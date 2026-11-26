@@ -1,146 +1,22 @@
-# RitmoLab — Installer
+RITMOLAB 1.2 — INSTALLAZIONE
 
-Questa cartella contiene **RitmoLab** per macOS, Windows e Linux/ChromeOS.
-Le versioni per computer (macOS, Windows, Linux) sono **eseguibili autonomi**:
-includono tutto il necessario e funzionano anche su una macchina su cui non è
-installato alcun browser. Nessuna connessione a Internet è richiesta, né per
-installare né per usare l'app.
+Scarica il file adatto da:
+https://github.com/MaestroLivio/RitmoLab/releases/latest
 
-## Quale file scaricare
+Windows 10/11 x64
+  Apri RitmoLab-<versione>-Windows-x64.exe e segui le indicazioni.
+  L'installer non è firmato commercialmente. Se SmartScreen chiede conferma,
+  verifica che il file venga dal repository ufficiale.
 
-| Sistema | File | Come si usa |
-|---|---|---|
-| **macOS** Apple Silicon (M1–M4) | `macOS/RitmoLab-1.0.0-macOS-arm64.dmg` | Apri il DMG, trascina RitmoLab in *Applicazioni*. |
-| **macOS** Intel | `macOS/RitmoLab-1.0.0-macOS-x64.dmg` | Apri il DMG, trascina RitmoLab in *Applicazioni*. |
-| **Windows 10 / 11** | `Windows/RitmoLab-1.0.0-Windows-x64.exe` | Doppio clic, *Avanti*, *Installa*. |
-| **Windows senza installazione** | `Windows/RitmoLab-1.0.0-Windows-Portable.exe` | Doppio clic: parte subito, nessuna installazione. |
-| **Linux** | `Linux/RitmoLab-1.0.0-Linux-x86_64.AppImage` | `chmod +x` e doppio clic, oppure esegui. |
-| **Linux / ChromeOS con Linux attivo** | `Linux/RitmoLab-1.0.0-Linux-amd64.deb` | `sudo dpkg -i RitmoLab-1.0.0-Linux-amd64.deb` |
-| **ChromeOS / Flex** | `ChromeOS/RitmoLab-ChromeOS.zip` | Estrai e fai doppio clic su `RitmoLab.html`. |
-| **ChromeOS / Flex** (app sulla shelf) | `ChromeOS/RitmoLab-ChromeOS-PWA.zip` | Estrai e segui il `LEGGIMI.txt` incluso. |
+macOS 12 o successivo, Apple Silicon (serie M)
+  Apri RitmoLab-<versione>-macOS-arm64.dmg e trascina RitmoLab in Applicazioni.
+  L'app è firmata ad hoc, non notarizzata. Dopo aver verificato la provenienza,
+  se macOS blocca l'apertura, usa Impostazioni di Sistema > Privacy e sicurezza
+  > Apri comunque, quando questa opzione è disponibile.
 
-> [!TIP]
-> Su un Mac con chip Apple Silicon scarica la versione **arm64**; sui Mac Intel
-> la **x64**. Se non sai quale hai: menu  → *Informazioni su questo Mac*.
-> Su un Chromebook non è possibile installare `.exe`, `.dmg` o `.deb` senza
-> Linux attivo: in quel caso usa `ChromeOS/RitmoLab-ChromeOS.zip`. Funziona
-> sempre, non richiede permessi speciali e non necessita di Linux.
+Per usare l'app e i suoni non occorre una connessione. Il microfono è richiesto
+solo in modalità Canto; la tastiera del computer funziona senza microfono.
+Se usi la base con il microfono, indossa le cuffie.
 
-## Eseguibili autonomi e versione HTML
-
-RitmoLab viene distribuito in due forme, con lo stesso contenuto didattico:
-
-- **Eseguibili** (macOS, Windows, Linux) — un'applicazione completa con
-  finestra propria e icona nel Dock/Barra delle applicazioni. Pesa di più
-  perché contiene il motore Chromium.
-- **HTML autonomo** (`RitmoLab.html`) — un singolo file da 442 KB che si apre
-  con doppio clic in qualsiasi browser. È la soluzione per ChromeOS, per i
-  computer scolastici bloccati e per le chiavette USB.
-
-Entrambe le versioni funzionano **completamente offline**.
-
-## Microfono
-
-Gli esercizi di canto verificano intonazione e precisione ritmica. Al primo
-uso il sistema chiede il permesso del microfono:
-
-- **macOS**: *Consenti* nella finestra di sistema.
-- **Windows**: *Consenti* nella finestra di sistema.
-- **ChromeOS / browser**: *Consenti* nel popup del browser; il permesso resta
-  memorizzato.
-
-Senza microfono restano utilizzabili tutte le attività ritmiche, il
-laboratorio, il solfeggio e la body percussion.
-
-## Primo avvio: avvisi di sicurezza
-
-I pacchetti **non sono firmati** con certificati commerciali Apple o
-Microsoft, quindi il sistema mostra un avviso una sola volta:
-
-- **macOS**: *Impostazioni di Sistema > Privacy e sicurezza > Apri comunque*.
-  In alternativa, tasto destro sull'app > *Apri* > *Apri*.
-- **Windows**: SmartScreen > *Ulteriori informazioni* > *Esegui comunque*.
-- **Linux**: nessun avviso; se l'AppImage non parte, rendila eseguibile con
-  `chmod +x`.
-
-Per eliminare gli avvisi servirebbe un certificato Apple Developer ID con
-notarizzazione e un certificato di firma del codice Windows.
-
-## Ricompilare
-
-### Eseguibili autonomi (Electron)
-
-```bash
-bash scripts/installers/build-electron.sh            # tutte le piattaforme
-bash scripts/installers/build-electron.sh macos      # solo macOS
-bash scripts/installers/build-electron.sh windows    # solo Windows
-bash scripts/installers/build-electron.sh linux      # solo Linux
-
-SKIP_BUILD=1 bash scripts/installers/build-electron.sh   # riusa RitmoLab.html
-ARCH=arm64 bash scripts/installers/build-electron.sh macos  # una sola architettura
-```
-
-Prerequisiti: `npm install`. Gli eseguibili Windows e Linux si possono
-compilare anche da macOS: `electron-builder` scarica i runtime delle altre
-piattaforme.
-
-### Installer leggeri (launcher + HTML)
-
-```bash
-bash scripts/installers/build-all.sh                 # macOS + Windows + ChromeOS
-SKIP_BUILD=1 bash scripts/installers/build-all.sh    # riusa RitmoLab.html
-```
-
-Questi pacchetti sono molto più piccoli (meno di 1 MB) perché non includono
-il runtime: aprono `RitmoLab.html` in una finestra dedicata usando un browser
-già presente sul computer. Prerequisiti aggiuntivi: **NSIS** per Windows
-(`brew install makensis`).
-
-## Struttura del progetto
-
-```
-electron-builder.config.cjs    # configurazione del packaging Electron
-electron/
-├── main.cjs                  # main process per lo sviluppo (vite dev server)
-├── main-packaged.cjs         # main process per gli eseguibili
-├── preload.cjs               # preload di sviluppo
-└── preload-packaged.cjs      # preload degli eseguibili
-scripts/
-├── build-standalone-html.js  # crea RitmoLab.html da dist/
-└── installers/
-    ├── build-electron.sh     # eseguibili autonomi (Electron)
-    ├── build-all.sh          # installer leggeri (launcher)
-    ├── build-macos.sh        # .app + .pkg + cartella per il DMG
-    ├── build-windows.sh      # .exe con NSIS
-    ├── build-chromeos.sh     # .zip autonomo + .zip PWA + .deb
-    ├── make-icons.mjs        # genera le icone (PNG e ICO) senza dipendenze
-    ├── make-pwa.mjs          # rende l'HTML una pagina installabile
-    ├── ritmolab-windows.nsi  # script dell'installer NSIS
-    └── LEGGIMI.txt           # istruzioni incluse nell'installer Windows
-```
-
-I file prodotti finiscono in `installers/`. Le cartelle temporanee di
-compilazione sono in `.build/` e possono essere cancellate in qualsiasi
-momento.
-
-## Scaricare dalla Release GitHub
-
-Tutti i pacchetti sono allegati alla release
-<https://github.com/MaestroLivio/RitmoLab/releases/latest>. I file binari non
-sono versionati nel repository (vedi `.gitignore`): si rigenerano con lo
-script qui sopra.
-
-> [!IMPORTANT]
-> Se `npm run build` si blocca su `transforming...`, è un problema
-> dell'ambiente di compilazione, non del codice. In quel caso usa
-> `SKIP_BUILD=1` per impacchettare il `RitmoLab.html` già presente, oppure
-> esegui la build su una macchina con `node_modules` installato
-> correttamente.
-
-## Licenza
-
-RitmoLab è rilasciato sotto licenza **Creative Commons Attribuzione 4.0
-Internazionale (CC BY 4.0)**. Sei libero di condividere e adattare il
-materiale, anche a fini commerciali, a condizione di attribuire l'opera
-all'autore, fornire un collegamento alla licenza e indicare eventuali
-modifiche. Testo completo: <https://creativecommons.org/licenses/by/4.0/>.
+Dalla versione 1.2 non vengono più prodotti pacchetti per Linux, ChromeOS,
+Mac Intel e Windows portable, né una versione HTML autonoma.

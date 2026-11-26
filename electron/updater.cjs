@@ -54,31 +54,11 @@ function compareVersions(a, b) {
 
 /** Sceglie l'asset della release adatto alla piattaforma in esecuzione. */
 function pickAsset(assets, version) {
-  const platform = process.platform; // 'darwin' | 'win32' | 'linux'
-  const arch = process.arch; // 'arm64' | 'x64'
-  const candidates = [];
-
-  if (platform === 'darwin') {
-    candidates.push(`RitmoLab-${version}-macOS-${arch}.dmg`);
-    // Fallback: l'altra architettura (es. Rosetta 2 sui Mac Apple Silicon).
-    if (arch === 'arm64') candidates.push(`RitmoLab-${version}-macOS-x64.dmg`);
-    if (arch === 'x64') candidates.push(`RitmoLab-${version}-macOS-arm64.dmg`);
-  } else if (platform === 'win32') {
-    candidates.push(`RitmoLab-${version}-Windows-x64.exe`);
-  } else if (platform === 'linux') {
-    // electron-builder nomina l'AppImage `...-x86_64.AppImage` e il deb
-    // `...-amd64.deb`, mentre process.arch restituisce `x64`. Preferiamo
-    // l'AppImage (avvio senza privilegi) e usiamo il deb come fallback.
-    candidates.push(`RitmoLab-${version}-Linux-x86_64.AppImage`);
-    candidates.push(`RitmoLab-${version}-Linux-${arch}.AppImage`);
-    candidates.push(`RitmoLab-${version}-Linux-amd64.deb`);
-  }
-
-  for (const name of candidates) {
-    const found = assets.find((a) => a && a.name === name);
-    if (found && found.browser_download_url) return found;
-  }
-  return null;
+  const suffix = { 'darwin-arm64': 'macOS-arm64.dmg', 'win32-x64': 'Windows-x64.exe' }[
+    `${process.platform}-${process.arch}`
+  ];
+  if (!suffix) return null;
+  return assets.find(asset => asset?.name === `RitmoLab-${version}-${suffix}` && asset.browser_download_url) || null;
 }
 
 /** Interroga l'ultima release GitHub; null in caso di errore o offline. */

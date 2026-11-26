@@ -1,0 +1,68 @@
+name: Release RitmoLab
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency: ritmolab-release
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        include:
+          - runner: macos-15
+            platform: macos
+            folder: macOS
+            suffix: macOS-arm64.dmg
+          - runner: windows-2025
+            platform: windows
+            folder: Windows
+            suffix: Windows-x64.exe
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run electron:build -- "${{ matrix.platform }}"
+      - run: node scripts/installers/smoke.mjs
+      - id: package
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          file="installers/${{ matrix.folder }}/RitmoLab-${version}-${{ matrix.suffix }}"
+          test -s "$file"
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}
+          path: ${{ steps.package.outputs.file }}
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          gh release create "v$version" --target "$GITHUB_SHA" --latest --generate-notes --notes-file CHANGELOG.md \
+            --title "RitmoLab $version" \
+            "release/macos/RitmoLab-$version-macOS-arm64.dmg" \
+            "release/windows/RitmoLab-$version-Windows-x64.exe"

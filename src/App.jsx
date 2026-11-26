@@ -28,6 +28,8 @@ import { settingsManager } from './engine/SettingsManager';
 import { audioEngine } from './engine/AudioEngine';
 import { ALL_LEVELS } from './data/curriculum';
 
+const SANDBOX = { id: 'SANDBOX', isSandbox: true, bpm: 90, accidentalsEnabled: true };
+
 export default function App() {
   const [currentLevelId, setCurrentLevelId] = useState('R1');
   const [appMode, setAppMode] = useState('curriculum'); // 'curriculum' | 'sandbox'
@@ -37,6 +39,7 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [userScoreNotes, setUserScoreNotes] = useState([]);
+  const [sandboxNotes, setSandboxNotes] = useState([]);
   const [stats, setStats] = useState(levelManager.getOverallStatistics());
 
   // Listen to settings updates
@@ -105,9 +108,9 @@ export default function App() {
   const levelStatus = levelManager.getLevelStatus(currentLevelId);
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#FFF9E6] text-slate-800 font-bubble select-none overflow-hidden">
+    <div className="studio-shell flex flex-col h-screen w-screen select-none overflow-hidden">
       {/* ----------------- TOP GLOBAL NAVBAR ----------------- */}
-      <header className="h-16 bg-white border-b-2 border-amber-200 px-6 flex items-center justify-between shadow-sm z-40 flex-shrink-0">
+      <header className="studio-header h-16 px-6 flex items-center justify-between z-40 flex-shrink-0">
         {/* Brand Logo & Name */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-400 to-rose-400 flex items-center justify-center text-white text-xl font-black shadow-playful-sm">
@@ -115,26 +118,27 @@ export default function App() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xl font-black tracking-tight text-slate-800">
-                Ritmo<span className="text-rose-500">Lab</span>
+              <span className="studio-brand text-xl font-black tracking-tight">
+                Ritmo<span className="text-violet-300">Lab</span>
               </span>
               <span className="bg-amber-100 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
                 Scuola Primaria
               </span>
             </div>
-            <p className="text-[10px] font-bold text-slate-400 -mt-0.5">
+            <p className="studio-subtitle text-[10px] font-bold -mt-0.5">
               Body Percussion • Metodo Kodály • Strumentario Orff
             </p>
           </div>
         </div>
 
         {/* Center: Navigation between Curriculum & Free Sandbox */}
-        <div className="flex items-center bg-amber-50 p-1 rounded-2xl border border-amber-200">
+        <nav aria-label="Modalità" className="studio-nav flex items-center bg-indigo-50 p-1 rounded-2xl border border-indigo-200">
           <button
             onClick={() => {
               setAppMode('curriculum');
               setShowLevelSelector(false);
             }}
+            aria-pressed={appMode === 'curriculum'}
             className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
               appMode === 'curriculum'
                 ? 'bg-amber-400 text-amber-950 shadow-sm'
@@ -150,6 +154,7 @@ export default function App() {
               setAppMode('sandbox');
               setShowLevelSelector(false);
             }}
+            aria-pressed={appMode === 'sandbox'}
             className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
               appMode === 'sandbox'
                 ? 'bg-amber-400 text-amber-950 shadow-sm'
@@ -159,7 +164,7 @@ export default function App() {
             <Sparkles className="w-4 h-4" />
             <span>Laboratorio Libero (DAW)</span>
           </button>
-        </div>
+        </nav>
 
         {/* Right Tools: Settings, Instrumentarium modal & Progress summary */}
         <div className="flex items-center gap-2.5">
@@ -297,17 +302,10 @@ export default function App() {
         ) : appMode === 'sandbox' ? (
           // Free sandbox DAW mode (supports both Rhythmic Tablature and Melodic notation)
           <GridEditor
-            initialNotes={userScoreNotes}
-            levelConfig={{
-              id: 'SANDBOX',
-              isSandbox: true,
-              bpm: 90,
-              totalSteps: 32,
-              allowedFigures: ['whole', 'half', 'quarter', 'eighth', 'sixteenth', 'rest_quarter', 'rest_eighth', 'rest_half', 'rest_whole'],
-              accidentalsEnabled: true,
-              allowedSounds: ['clap', 'chest', 'thighs', 'feet', 'snap', 'claves', 'tambourine', 'triangle', 'cymbals'],
-            }}
-            onNotesChange={(newNotes) => setUserScoreNotes(newNotes)}
+            key="sandbox"
+            initialNotes={sandboxNotes}
+            levelConfig={SANDBOX}
+            onNotesChange={setSandboxNotes}
           />
         ) : subMode === 'tap' ? (
           // Rhythm Tap Game mode
@@ -315,7 +313,7 @@ export default function App() {
             key={currentLevel.id}
             level={currentLevel}
             onComplete={(res) => {
-              handleLevelComplete({ ...res, autoAdvance: true });
+              handleLevelComplete({ ...res, autoAdvance: false });
             }}
             onNextLevel={hasNext ? handleNextLevel : null}
             onBackToEditor={() => setSubMode('editor')}
@@ -326,7 +324,7 @@ export default function App() {
             key={currentLevel.id}
             level={currentLevel}
             onComplete={(res) => {
-              handleLevelComplete({ ...res, autoAdvance: true });
+              handleLevelComplete({ ...res, autoAdvance: false });
             }}
             onNextLevel={hasNext ? handleNextLevel : null}
             onBack={() => setSubMode('editor')}

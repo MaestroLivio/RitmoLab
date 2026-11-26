@@ -1,218 +1,60 @@
-# 🎵 RitmoLab - Laboratorio Desktop per l'Educazione Musicale
+# RitmoLab · Laboratorio musicale
 
-**RitmoLab** è un'applicazione desktop standalone completa ed offline per l'insegnamento e l'apprendimento della musica nella **Scuola Primaria**. Unisce la **Body Percussion**, lo **Strumentario Orff** e la **Solmisazione relativa con Chironomia (Metodo Kodály)** attraverso un editor musicale ibrido (DAW + Notazione convenzionale) e un percorso curricolare progressivo di **88 livelli didattici**.
+RitmoLab è un'app desktop offline per la scuola primaria. Riunisce un editor di partiture, la body percussion, lo strumentario Orff e la solmisazione Kodály in **88 livelli**: 48 ritmici e 40 melodici.
 
----
+## Scarica e installa
 
-## 📥 Scarica RitmoLab
+| Sistema | Installer 1.2.0 |
+| --- | --- |
+| **Windows 10/11 x64** | [RitmoLab-1.2.0-Windows-x64.exe](https://github.com/MaestroLivio/RitmoLab/releases/download/v1.2.0/RitmoLab-1.2.0-Windows-x64.exe) |
+| **macOS 12 o successivo, Apple Silicon** | [RitmoLab-1.2.0-macOS-arm64.dmg](https://github.com/MaestroLivio/RitmoLab/releases/download/v1.2.0/RitmoLab-1.2.0-macOS-arm64.dmg) |
 
-Gli installer sono allegati alla **[release più recente](https://github.com/MaestroLivio/RitmoLab/releases/latest)**. Sono **eseguibili autonomi**: contengono tutto il necessario e funzionano offline, senza browser installato. Le versioni desktop (Electron) controllano automaticamente all'avvio se è disponibile un aggiornamento e propongono di scaricarlo e installarlo.
+Dalla 1.2, la [release corrente](https://github.com/MaestroLivio/RitmoLab/releases/latest) contiene solo questi due installer. Le versioni Intel, Linux, ChromeOS, portable e HTML non sono più prodotte. Le vecchie release restano consultabili.
 
-| Sistema | File |
-|---|---|
-| **macOS** Apple Silicon | `RitmoLab-1.1.0-macOS-arm64.dmg` |
-| **macOS** Intel | `RitmoLab-1.1.0-macOS-x64.dmg` |
-| **Windows 10 / 11** | `RitmoLab-1.1.0-Windows-x64.exe` |
-| **Windows** portable | `RitmoLab-1.1.0-Windows-Portable.exe` |
-| **Linux** | `RitmoLab-1.1.0-Linux-x86_64.AppImage` |
-| **Linux** (Debian/Ubuntu) | `RitmoLab-1.1.0-Linux-amd64.deb` |
-| **ChromeOS / Flex** | `RitmoLab-ChromeOS.zip` (doppio clic su `RitmoLab.html`) |
+Gli installer includono l'app, i campioni e i caratteri musicali. Per installare, lavorare e riprodurre i suoni non serve Internet. Il controllo degli aggiornamenti usa GitHub quando è disponibile una connessione. Consulta le [istruzioni di installazione](installers/LEGGIMI.txt) per gli eventuali avvisi del sistema.
 
-Al primo avvio macOS e Windows mostrano un avviso di sicurezza, perché i pacchetti non sono firmati con certificati commerciali. Istruzioni dettagliate in [`installers/LEGGIMI.txt`](installers/LEGGIMI.txt).
+## Scrivi e ascolta una partitura
 
----
+1. Apri **Laboratorio libero**. Scegli ritmo o melodia; per la melodia puoi usare il pentagramma, il bigramma, il trigramma o il doppio rigo.
+2. Scegli **Blocchi** per lavorare con le durate proporzionali oppure **Notazione** per modificare il rigo con figure convenzionali. Usa il menu del metro per cambiare tra 2/4, 3/4, 4/4 e 6/8.
+3. Scegli una nota o una pausa nella tavolozza e fai clic sul rigo. Seleziona una figura già inserita per cambiarne la durata o l'alterazione. Nel laboratorio puoi usare anche il punto di valore; i valori inferiori al sedicesimo non sono previsti.
+4. Trascina per spostare la figura. Da tastiera: **Tab** porta al rigo, **frecce** spostano il cursore, **Invio** inserisce, **Maiusc + frecce** sposta la figura selezionata e **Canc** la elimina. Le frecce sopra l'editor annullano e ripristinano; dal rigo funzionano anche **Ctrl/⌘+Z** e **Ctrl/⌘+Maiusc+Z**.
+5. Premi **Ascolta**. Le crome e semicrome consecutive si raggruppano per pulsazione; le note che oltrepassano una battuta sono mostrate con una legatura. Il rigo doppio permette di inserire e riprodurre due voci. Nel laboratorio il menu **Progetti** salva e richiama il lavoro.
 
-## 🌟 Caratteristiche Principali
+L'editor è pensato per lo studio: non sostituisce un programma di impaginazione professionale e non esporta MusicXML, MIDI o PDF.
 
-### 1. Workspace Ibrido DAW + Notazione Musicale
-- **Nomenclatura Musicale Ufficiale**:
-  - `Intero 4/4` (4 battiti, 16 sedicesimi, 𝅝)
-  - `Metà 2/4` (2 battiti, 8 sedicesimi, 𝅗𝅥)
-  - `Quarto 1/4` (1 battito, 4 sedicesimi, ♩)
-  - `Ottavo 1/8` (1/2 battito, 2 sedicesimi, ♪)
-  - `Sedicesimo 1/16` (1/4 battito, 1 sedicesimo, ♬)
-- **Doppia Visualizzazione Istantanea**:
-  - **Blocchi Proporzionali (Montessori)**: la larghezza grafica di ogni tessera rispecchia la sua durata matematica (Intero 4/4 = 16 sedicesimi, Metà 2/4 = 8, Quarto 1/4 = 4, Ottavo 1/8 = 2, Sedicesimo 1/16 = 1).
-  - **Notazione Convenzionale**: rendering vettoriale accurato di teste di nota (piene e vuote), gambi, bandierine singole e doppie (𝅝, 𝅗𝅥, ♩, ♪, ♬), tagli addizionali (es. Do centrale) e pause (𝄽, 𝄾).
-- **Laboratorio Libero (DAW Completo)**:
-  - **Tablatura Ritmica**: griglia multitraccia per Body Percussion (Mani, Dita, Petto, Cosce, Piedi) e Strumentario Orff (Legnetti, Tamburello, Triangolo, Piatti).
-  - **Rigo Melodico**: selezione tra Pentagramma (5 linee), Trigramma (3 linee), Bigramma (2 linee) o Doppio Rigo.
-  - Selezione estensione battute: 1, 2, 4 o 8 battute.
-- **Spiegazione Didattica e Ascolto della Versione Corretta**:
-  - In ogni esercizio del percorso didattico è presente un pannello interattivo con l'**Obiettivo Didattico**, la **Guida Vocale (Come contare con sillabe Kodály)** e il pulsante **"Ascolta Versione Corretta"** per ascoltare la partitura modello in qualsiasi momento.
-- **Drag & Drop Bidimensionale**:
-  - **Asse X (Tempo)**: ancoraggio magnetico a griglia di sedicesimi (1/16) con linee di battuta e suddivisione dei quarti.
-  - **Asse Y (Altezza/Pitch o Strumento)**: ancoraggio dinamico sulle linee e negli spazi del rigo musicale o sulle tracce di Body Percussion.
-- **Playhead Fluido**: linea rossa con indicatore luminoso che scorre a 60 FPS sincronizzata con l'audio.
-- **Diagramma a Torta Animato (Ciclo del 4/4)**: pie-chart a 4 fette colorate Montessori che si riempiono in tempo reale al battere di ogni quarto, mostrando la frazione matematica e verificando se la battuta è completa ($16/16 = 4/4$).
+## Esercitati
 
----
+- **Esegui il ritmo:** usa il tasto spazio oppure i tasti e i pulsanti delle singole percussioni. Per la melodia usa i tasti sullo schermo, la tastiera del computer, una periferica MIDI USB o la modalità **Canto**. I livelli con alterazioni offrono anche i controlli ♮, ♯ e ♭.
+- **Conta e suona:** il metronomo dà una battuta di preparazione. Il primo numero compare al primo clic, e il brano entra subito dopo l'ultimo. In 6/8 si contano due pulsazioni da tre crome, mentre i BPM continuano a riferirsi alla semiminima.
+- **Accompagnamento MIDI:** la base usa batteria campionata negli esercizi ritmici e basso e pianoforte negli esercizi melodici, senza richiedere una periferica esterna. Disattivala nella scheda prima di iniziare: il metronomo rimane attivo. In modalità **Canto**, usa le cuffie per limitare il rientro dell'audio nel microfono.
+- **Dettato:** ascolta la battuta di preparazione e il brano, poi scegli la risposta. Puoi riascoltare o interrompere quando vuoi. La base non viene sovrapposta al dettato.
+- **Risultati:** il giudizio indica precisione, anticipo o ritardo; la tolleranza è configurabile in **Impostazioni**. Se il sistema richiede movimento ridotto, l'esercizio mostra la figura in arrivo senza scorrimento continuo.
 
-### 2. Motore Audio (Sintesi Procedurale Web Audio API Pura)
-Nessun file audio `.mp3` o `.wav` esterno. Tutta la sintesi è generata in tempo reale via codice:
-- **Body Percussion**:
-  - **Mani (Clap)**: rumore bianco filtrato passa-banda corto + snap.
-  - **Petto (Chest)**: sine sweep discendente a bassa frequenza ($150 \rightarrow 50\text{ Hz}$).
-  - **Cosce (Thighs)**: sine sweep medio con transiente slap attenuato.
-  - **Piedi (Feet/Stomp)**: kick drum profondo e percussivo ($100 \rightarrow 35\text{ Hz}$).
-  - **Dita (Snap)**: click acuto con cinguettio ad alta frequenza.
-- **Strumentario Orff**:
-  - **Legnetti (Claves)**: doppio oscillatore sinusoidale risonante ($2200\text{ Hz}$ e $2780\text{ Hz}$) a decadimento rapido.
-  - **Tamburello**: percussione a membrana combinata con tintinnio metallico modulato.
-  - **Triangolo**: 4 oscillatori sinusoidali disarmonici detunati con riverbero metallico prolungato ($>1.2\text{ s}$).
-  - **Piatti (Cymbals)**: rumore bianco passa-alto con inviluppo esponenziale lungo.
-- **Sintesi Melodica & Inviluppo ADSR Dinamico**:
-  - Timbri selezionabili: **Xilofono/Metallofono Orff**, **Glockenspiel**, **Flauto Dolce**.
-  - Durata dinamica: una minima o semibreve risuona più a lungo di una croma o semicroma.
-  - Supporto per **Diesis ($\sharp$)** e **Bemolle ($\flat$)**.
+Nel **Percorso didattico → Strumenti docente** puoi sbloccare i livelli per una dimostrazione, importare o esportare i progressi in JSON e azzerare il profilo.
 
----
+## Suoni e licenze
 
-### 3. Modalità "Esegui il Ritmo" (RhythmEvaluator Engine)
-- Valutazione in tempo reale della pressione della **Barra Spaziatrice** o del pulsante su schermo.
-- Calcolo esatto dei millisecondi teorici in base ai BPM e alla notazione.
-- Finestre di tolleranza didattica:
-  - $\pm 80\text{ ms}$: **"Perfetto"** ⭐ (+100 punti)
-  - $\pm 165\text{ ms}$: **"Impreciso"** 👍 (+60 punti, con indicatore di anticipo/ritardo)
-  - Oltre finestra o non suonato: **"Mancato"** ❌
-- Conteggio combo, stelle (da 1 a 3), percentuale di accuratezza e coriandoli festosi (*confetti*) al completamento!
+L'app riproduce **39 campioni locali** ricavati dalla banca FluidR3 GM: xilofono, glockenspiel, flauto dolce, pianoforte, basso, percussioni e metronomo. Non usa oscillatori o rumore generato per i timbri. Mani usa un campione di battito di mani; Petto, Cosce, Piedi e Dita sono rappresentati da campioni percussivi analoghi, non da registrazioni di quei gesti. Il font musicale Bravura è incluso.
 
----
+- RitmoLab: [CC BY 4.0](LICENSE), attribuzione a [MaestroLivio](https://github.com/MaestroLivio).
+- Campioni FluidR3 GM: [licenza MIT e attribuzione](public/samples/LICENSE.txt).
+- Bravura: [SIL Open Font License 1.1](public/fonts/OFL-Bravura.txt).
 
-### 4. Il Percorso Didattico (88 Livelli Totali)
+## Sviluppo e release
 
-#### PARTE A: RITMO E BODY PERCUSSION (48 Livelli)
-1. **Area 1 (Livelli 1-8)**: *Scoprire il ritmo* — Solo Mani (Clap). Semibreve ($4/4$), Minima ($2/4$), Semiminima ($1/4$). La Marcia degli Orsetti.
-2. **Area 2 (Livelli 9-16)**: *Entrano gli ottavi* — Coppie di ottavi (Ti-Ti) e ritmi misti. Saltarello.
-3. **Area 3 (Livelli 17-24)**: *Entrano i sedicesimi* — Quartine di sedicesimi (Tiri-Tiri), combinazioni rapide, Groove Sincopato.
-4. **Area 4 (Livelli 25-30)**: *Le prime parti del corpo* — Introduzione di Cosce e Piedi associati a colori differenziati.
-5. **Area 5 (Livelli 31-36)**: *Coordinazione Corporea Totale* — 4 azioni integrate: Clap, Cosce, Piedi, Dita.
-6. **Area 6 (Livelli 37-42)**: *Complessità, Pause e Tamburo del Petto* — Pause di semiminima (𝄽) e di croma (𝄾), percussione sul Petto.
-7. **Area 7 (Livelli 43-45)**: *Ascolto e Riconoscimento* — Dettati ritmici a scelta multipla e ricostruzione ad orecchio.
-8. **Area 8 (Livelli 46-48)**: *Composizione e Matematica Musicale* — Verifica della quadratura $4/4$ e gran concerto finale.
+Usa Node.js 22 LTS:
 
-#### PARTE B: MELODIA E SOLMISAZIONE (40 Livelli)
-1. **Modulo 1 (Livelli 1-8)**: *Il Nucleo Infantile* — Bigramma (2 linee). Note Sol, Mi e La. Chironomia Kodály (segni delle mani). Sinfonia dei Giocattoli e ninne nanne.
-2. **Modulo 2 (Livelli 9-16)**: *La Scala Pentatonica* — Trigramma (3 linee). Aggiunta di Do e Re (Do-Re-Mi-Sol-La). Spirituals e canti folk. Dettato pentatonico.
-3. **Modulo 3 (Livelli 17-24)**: *Il Pentagramma Diatonico* — Pentagramma a 5 linee con Chiave di Violino. Introduzione dei semitoni naturali Fa e Si. Inno alla Gioia, La Primavera di Vivaldi.
-4. **Modulo 4 (Livelli 25-32)**: *Indipendenza e Polifonia* — Doppio rigo musicale. Bordone (ostinato) + Melodia. Il Canone (Fra Martino a due voci differite). Dettato armonico.
-5. **Modulo 5 (Livelli 33-40)**: *Espressione, Modi e Alterazioni* — Percezione del Modo Maggiore vs Minore. Trascinamento di Diesis ($\sharp$) e Bemolle ($\flat$). Livello 40: Composizione polifonica libera a 2 voci su 8 battute.
-
----
-
-## 🚀 Istruzioni di Avvio e Comandi
-
-### Prerequisiti
-- **Node.js** versione 18 o superiore (consigliata v20+ o v22 LTS).
-- **npm** (incluso con Node.js).
-
-### 1. Installazione Dipendenze
-Apri il terminale nella cartella del progetto ed esegui:
 ```bash
-npm install
-```
-
-### 2. Avvio in Modalità Browser (Sviluppo Rapido)
-Avvia il server di sviluppo Vite:
-```bash
+npm ci
+npm test
 npm run dev
-```
-Apri il browser su [http://localhost:5173](http://localhost:5173).
-
-### 3. Avvio in Modalità Applicazione Desktop Standalone (Electron)
-Per avviare la finestra nativa desktop su macOS / Windows / Linux:
-```bash
 npm run electron:dev
-```
-
-### 4. Build per la Produzione
-Per compilare i file ottimizzati per l'offline:
-```bash
 npm run build
 ```
-I file compilati saranno salvati nella cartella `dist/`.
 
-Per visualizzare l'anteprima del build di produzione:
-```bash
-npm run preview
-```
+Su una macchina del sistema di destinazione, `npm run electron:build -- macos` crea il DMG Apple Silicon, mentre `npm run electron:build -- windows` crea l'installer NSIS x64. I file finiscono rispettivamente in `installers/macOS/` e `installers/Windows/`.
 
-### 5. Creazione degli Installer
+Per pubblicare una nuova versione, aggiorna la versione in `package.json` e nel lockfile, porta le modifiche su `main` e avvia **Actions → Release RitmoLab → Run workflow**. Il workflow esegue i test su entrambe le piattaforme e pubblica soltanto i due installer quando le build hanno avuto successo.
 
-Gli eseguibili autonomi per macOS, Windows e Linux si generano con un solo comando:
-
-```bash
-bash scripts/installers/build-electron.sh              # tutte le piattaforme
-bash scripts/installers/build-electron.sh macos        # solo macOS
-SKIP_BUILD=1 bash scripts/installers/build-electron.sh # riusa RitmoLab.html
-```
-
-I pacchetti finiscono in `installers/`. Per pubblicarli:
-
-```bash
-gh release create v1.1.0 installers/macOS/*.dmg installers/Windows/*.exe \
-  installers/Linux/*.AppImage installers/Linux/*.deb \
-  installers/ChromeOS/*.zip installers/ChromeOS/*.deb \
-  installers/LEGGIMI.txt --title "RitmoLab 1.1.0"
-```
-
-### 6. Esecuzione Test Automatici
-Per verificare l'integrità del curriculum a 88 livelli, la precisione in millisecondi del `RhythmEvaluator` e la persistenza:
-```bash
-node src/tests/curriculum-evaluator.test.js
-```
-
----
-
-## 📂 Architettura del Progetto
-
-```text
-├── electron/
-│   ├── main.cjs            # Processo principale Electron (finestra desktop standalone)
-│   └── preload.cjs         # Preload script per isolamento di contesto sicuro
-├── src/
-│   ├── engine/
-│   │   ├── AudioEngine.js      # Sintesi procedurale Web Audio API (Body, Orff, Melodia)
-│   │   ├── RhythmEvaluator.js  # Motore di valutazione tempo reale con tolleranza ms
-│   │   └── LevelManager.js     # Gestione sblocco, progressi, stelle e salvataggio JSON
-│   ├── data/
-│   │   └── curriculum.js       # Configurazione completa degli 88 livelli didattici
-│   ├── components/
-│   │   ├── GridEditor.jsx      # Workspace ibrido con Drag & Drop X/Y e snap 1/16
-│   │   ├── NoteRenderer.jsx    # Visualizzazione Blocchi Proporzionali e Notazione
-│   │   ├── StaffRenderer.jsx   # Bigramma, Trigramma, Pentagramma e tracce Body
-│   │   ├── PieCycleChart.jsx   # Diagramma a torta animato a 4 fette per il 4/4
-│   │   ├── RhythmTapGame.jsx   # Esercizio Rhythm Tap con barra spaziatrice e score
-│   │   ├── DictationGame.jsx   # Gioco del dettato melodico e ritmico ad orecchio
-│   │   ├── LevelSelector.jsx   # Griglia degli 88 livelli con filtri e strumenti docente
-│   │   └── InstrumentariumModal.jsx # Soundboard interattiva dello strumentario Orff
-│   ├── App.jsx             # Shell principale dell'applicazione e navigazione
-│   ├── main.jsx            # Entrypoint React
-│   └── index.css           # Styling TailwindCSS con colori pastello Montessori
-├── index.html              # HTML con font accessibili (Fredoka, Quicksand)
-├── tailwind.config.js      # Palette colori Montessori, Solfeggio Kodály e Body Percussion
-├── vite.config.js          # Configurazione Vite con percorsi relativi per offline
-└── package.json            # Dipendenze e script npm
-```
-
----
-
-## 👩‍🏫 Strumenti per il Docente
-Nel pannello **Percorso Didattico** è presente il pulsante **Strumenti Docente**:
-1. **Sblocca Tutti i Livelli**: consente all'insegnante di accedere immediatamente a qualunque livello per dimostrazioni in classe o proiezioni su LIM.
-2. **Esporta Progressi (JSON)**: scarica un file `.json` con lo storico, i punteggi e le composizioni degli allievi.
-3. **Importa Progressi**: consente di caricare il profilo di un alunno da un file salvato in precedenza.
-4. **Azzera Progressi**: per preparare l'applicazione per una nuova classe o un nuovo anno scolastico.
-
----
-
-## 📄 Licenza
-
-RitmoLab è rilasciato sotto licenza **Creative Commons Attribuzione 4.0 Internazionale**
-(CC BY 4.0). Sei libero di condividere e adattare il materiale, anche a fini commerciali,
-a condizione di attribuire l'opera all'autore ([MaestroLivio](https://github.com/MaestroLivio)),
-fornire un collegamento alla licenza e indicare se sono state apportate modifiche.
-
-Testo completo della licenza: <https://creativecommons.org/licenses/by/4.0/>
-
-Ideato per docenti ed educatori musicali della Scuola Primaria.
+`src/engine/Transport.js` gestisce tempo, metro e armonizzazione; `AudioEngine.js` carica e programma i campioni. La visualizzazione convenzionale è in `src/components/ScoreEngraving.jsx`. Per rigenerare i soli campioni dal soundfont originale, vedi [`scripts/render-samples.py`](scripts/render-samples.py).

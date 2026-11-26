@@ -72,7 +72,7 @@ export default function LevelSelector({
   };
 
   return (
-    <div className="flex flex-col h-full bg-montessori-cream rounded-3xl border-2 border-amber-200/90 shadow-playful overflow-hidden select-none">
+    <div className="studio-panel flex flex-col h-full overflow-hidden select-none">
       {/* Top Header & Global Stats */}
       <div className="px-6 py-5 bg-white border-b-2 border-amber-100 flex flex-wrap items-center justify-between gap-4">
         <div>

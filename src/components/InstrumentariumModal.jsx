@@ -35,7 +35,7 @@ export default function InstrumentariumModal({ isOpen, onClose }) {
               Strumentario Orff & Body Percussion
             </h3>
             <p className="text-xs text-slate-500">
-              Sintesi procedurale Web Audio API pura senza campioni audio esterni.
+              Suoni campionati inclusi nell’app: puoi ascoltarli anche offline.
             </p>
           </div>
           <button

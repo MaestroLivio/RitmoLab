@@ -102,7 +102,7 @@ export class MidiManager {
         solfege: mapped.solfege,
         label: mapped.label,
         accidental: mapped.accidental || 0,
-        timestamp: performance.now(),
+        timestamp: event.timeStamp || performance.now(),
       };
 
       this.noteListeners.forEach((listener) => {
