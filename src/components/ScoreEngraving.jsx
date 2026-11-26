@@ -26,9 +26,9 @@ export function ScoreStaff({ rows, rowHeight, stepWidth, indent, totalSteps, sig
               stroke="#25304a" strokeWidth={x >= width - 2 ? 2.5 : 1.3} />;
           })}
           {treble && <>
-            <text x="7" y={ys.at(-2)} stroke="none" fill="#182746" className="music-glyph" fontSize={rowHeight * 8}>{"\uE050"}</text>
-            <text x="55" y={middle - rowHeight} stroke="none" fill="#182746" dominantBaseline="central" fontSize={rowHeight * 1.6} fontWeight="800">{top}</text>
-            <text x="55" y={middle + rowHeight} stroke="none" fill="#182746" dominantBaseline="central" fontSize={rowHeight * 1.6} fontWeight="800">{bottom}</text>
+            <text x="8" y={ys.at(-2)} stroke="none" fill="#182746" className="music-glyph" fontSize={rowHeight * 5}>{"\uE050"}</text>
+            <text x="67" y={middle - rowHeight} stroke="none" fill="#182746" dominantBaseline="central" textAnchor="middle" fontSize={rowHeight * 1.6} fontWeight="800">{top}</text>
+            <text x="67" y={middle + rowHeight} stroke="none" fill="#182746" dominantBaseline="central" textAnchor="middle" fontSize={rowHeight * 1.6} fontWeight="800">{bottom}</text>
           </>}
         </g>;
       })}

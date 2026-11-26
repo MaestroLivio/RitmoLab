@@ -735,7 +735,7 @@ export default function RhythmTapGame({
 
                   {/* Treble Clef (Chiave di Violino / Sol) */}
                   {!simpleStaff && <svg className="absolute left-0 top-0 pointer-events-none" width="60" height="192">
-                    <text x="7" y="120" className="music-glyph" fontSize="92">{"\uE050"}</text>
+                    <text x="7" y="120" className="music-glyph" fontSize="76">{"\uE050"}</text>
                   </svg>}
 
                   {/* Vertical bar line dividing clef */}

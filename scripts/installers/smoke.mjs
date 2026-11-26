@@ -84,8 +84,8 @@ try {
   assert.ok(await js(`document.fonts.load('40px Bravura', '\\uE050').then(fonts => fonts.length > 0)`));
 
   await js(`press('Laboratorio Libero')`);
-  await waitFor(() => js(`!!findButton('Melodia')`), 'laboratorio');
-  await js(`press('Melodia')`);
+  await waitFor(() => js(`!!findButton('Rigo Melodico')`), 'laboratorio');
+  await js(`press('Rigo Melodico')`);
   await waitFor(() => js(`!!document.querySelector('.score-paper')`), 'pentagramma');
   await js(`window.score = document.querySelector('.score-area'); score.focus();
     window.key = (key, options = {}) => score.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...options }));
@@ -99,6 +99,17 @@ try {
     const { data } = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(process.env.RITMOLAB_SCREENSHOT, Buffer.from(data, 'base64'));
   }
+  await js(`{
+    const staff = document.querySelector('select[aria-label="Tipo di rigo"]');
+    staff.value = 'dual';
+    staff.dispatchEvent(new Event('change', { bubbles: true }));
+  }`);
+  await waitFor(() => js(`document.querySelectorAll('.score-paper > g').length === 2`), 'doppio rigo');
+  await js(`{
+    const bounds = score.getBoundingClientRect();
+    score.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: bounds.left + 103, clientY: bounds.top + 184 }));
+  }`);
+  await waitFor(() => js(`document.querySelectorAll('.score-note-hit').length === 2`), 'inserimento sulla seconda voce');
 
   await js(`press('Percorso Didattico')`);
   await waitFor(() => js(`!!findButton('Esegui il Ritmo')`), 'percorso');

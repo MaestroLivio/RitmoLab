@@ -808,7 +808,7 @@ export default function GridEditor({
         </div>
 
         {/* Right: Instrument Timbre & Chironomy & Bars Selector */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
           {isSandbox && (
             <>
               {/* Measure Count Selector (Extended to 32 bars) */}
@@ -864,6 +864,7 @@ export default function GridEditor({
               {/* Melodic Staff Type in Sandbox */}
               {isSandbox && (
                 <select
+                  aria-label="Tipo di rigo"
                   value={sandboxStaff}
                   onChange={(e) => setSandboxStaff(e.target.value)}
                   className="bg-white border border-amber-200 text-xs font-bold text-slate-700 px-2.5 py-1.5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-amber-300"
@@ -871,6 +872,7 @@ export default function GridEditor({
                   <option value="pentagram">🎼 Pentagramma (5 Linee)</option>
                   <option value="trigram">📐 Trigramma (3 Linee)</option>
                   <option value="bigram">➖ Bigramma (2 Linee)</option>
+                  <option value="dual">🎼 Doppio rigo (2 voci)</option>
                 </select>
               )}
 
@@ -898,6 +900,7 @@ export default function GridEditor({
 
               {/* Instrument timbre selector */}
               <select
+                aria-label="Strumento melodico"
                 value={melodicInstrument}
                 onChange={(e) => {
                   setMelodicInstrument(e.target.value);
@@ -911,7 +914,7 @@ export default function GridEditor({
               </select>
 
               {/* Kodaly Chironomy Hand Signs Toggle */}
-              <button
+              {viewMode === 'blocks' && <button
                 onClick={() => {
                   const next = !showChironomy;
                   setShowChironomy(next);
@@ -926,7 +929,7 @@ export default function GridEditor({
               >
                 <span>🖐️</span>
                 <span className="hidden md:inline">Gesti Kodály</span>
-              </button>
+              </button>}
             </>
           )}
 
