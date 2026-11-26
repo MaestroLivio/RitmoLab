@@ -50,6 +50,7 @@ export default function GridEditor({
   onNextLevel = null,
 }) {
   const isSandbox = levelConfig?.id === 'SANDBOX' || levelConfig?.isSandbox;
+  useEffect(() => () => audioEngine.stopPlayback(), []);
 
   // View mode: 'blocks' (Proportional) or 'conventional' (Standard notation)
   const [viewMode, setViewMode] = useState(levelConfig?.section === 'melody' ? 'conventional' : 'blocks');
