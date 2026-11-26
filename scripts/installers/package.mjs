@@ -28,6 +28,7 @@ try {
   }
   copyFileSync(join(root, 'dist/index.html'), join(app, 'RitmoLab.html'));
   copyFileSync(join(root, 'LICENSE'), join(app, 'LICENSE'));
+  copyFileSync(join(root, 'LICENSE'), join(stage, 'LICENSE.txt'));
   copyFileSync(join(root, 'electron/main-packaged.cjs'), join(app, 'main.cjs'));
   copyFileSync(join(root, 'electron/updater.cjs'), join(app, 'updater.cjs'));
   writeFileSync(join(stage, 'electron-builder.config.cjs'),

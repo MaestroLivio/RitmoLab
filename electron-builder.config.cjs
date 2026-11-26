@@ -34,6 +34,6 @@ module.exports = {
     createDesktopShortcut: true,
     installerLanguages: ['it_IT'],
     differentialPackage: false,
-    license: 'LICENSE',
+    license: 'LICENSE.txt',
   },
 };

@@ -123,11 +123,17 @@ try {
   assert.deepEqual(errors, []);
   console.log('Smoke test: banco audio/Bravura, editor, conto alla rovescia e interruzione verificati.');
 } finally {
-  ws?.close();
   if (child.exitCode == null && child.pid) {
     const exited = new Promise(resolve => child.once('exit', resolve));
-    child.kill();
-    await Promise.race([exited, delay(2000)]);
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ id: 999999, method: 'Browser.close' }));
+      await Promise.race([exited, delay(2000)]);
+    }
+    if (child.exitCode == null && child.signalCode == null) {
+      child.kill();
+      await Promise.race([exited, delay(2000)]);
+    }
   }
+  ws?.close();
   rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
