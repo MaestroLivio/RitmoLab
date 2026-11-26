@@ -2,6 +2,11 @@ name: Release RitmoLab
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Pubblica su GitHub Releases dopo i test
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -49,6 +54,7 @@ jobs:
           if-no-files-found: error
 
   publish:
+    if: inputs.publish
     needs: build
     runs-on: ubuntu-latest
     permissions:

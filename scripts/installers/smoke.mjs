@@ -66,6 +66,15 @@ try {
     window.press = (match) => window.findButton(match)?.click();`);
   const scripts = await waitFor(() => js(`document.querySelector('.studio-shell') && !!findButton('Laboratorio Libero')`), 'interfaccia');
   assert.ok(scripts);
+  if (process.platform === 'darwin' && process.env.CI === 'true') {
+    // The hosted macOS runner may not expose a physical output device.
+    // Keep an actual AudioContext clock, but don't route it to hardware.
+    await js(`window.AudioContext = new Proxy(window.AudioContext, {
+      construct(target, [options], newTarget) {
+        return Reflect.construct(target, [{ ...options, sinkId: { type: 'none' } }], newTarget);
+      }
+    })`);
+  }
   const assets = JSON.stringify(['samples/clap.mp3', 'samples/triangle.mp3', 'samples/flute-60.mp3',
     'samples/piano-60.mp3', 'fonts/Bravura.woff2']);
   assert.ok(await js(`(async () => {
@@ -115,8 +124,17 @@ try {
   await waitFor(() => js(`!!findButton('Esegui il Ritmo')`), 'percorso');
   await js(`press('Esegui il Ritmo')`);
   await waitFor(() => js(`!!findButton('Inizia Esercizio')`), 'esercizio');
-  await js(`document.querySelector('.backing-toggle input').click(); press('Inizia Esercizio')`);
-  await waitFor(() => js(`document.querySelector('.count-dial')?.textContent.trim() === '4'`), 'prima pulsazione del conteggio');
+  await js(`{
+    window.countsSeen = [];
+    const observer = new MutationObserver(() => {
+      const count = Number(document.querySelector('.count-dial')?.textContent.trim());
+      if (count > 0 && window.countsSeen.at(-1) !== count) window.countsSeen.push(count);
+    });
+    observer.observe(document.body, { subtree: true, childList: true, characterData: true });
+    document.querySelector('.backing-toggle input').click();
+    press('Inizia Esercizio');
+  }`);
+  await waitFor(() => js(`window.countsSeen[0] === 4`), 'prima pulsazione del conteggio');
   await waitFor(() => js(`document.querySelector('.lesson-progress')?.value > 0`), 'trasporto dopo il conteggio');
   await js(`press('Interrompi e torna')`);
   await waitFor(() => js(`!!findButton('Inizia Esercizio') && !document.querySelector('.count-dial')`), 'annullamento');
