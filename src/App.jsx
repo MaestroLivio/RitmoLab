@@ -108,12 +108,12 @@ export default function App() {
   const levelStatus = levelManager.getLevelStatus(currentLevelId);
 
   return (
-    <div className="studio-shell flex flex-col h-screen w-screen select-none overflow-hidden">
+    <div className="studio-shell select-none">
       {/* ----------------- TOP GLOBAL NAVBAR ----------------- */}
-      <header className="studio-header h-16 px-6 flex items-center justify-between z-40 flex-shrink-0">
+      <header className="studio-header">
         {/* Brand Logo & Name */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-400 to-rose-400 flex items-center justify-center text-white text-xl font-black shadow-playful-sm">
+        <div className="studio-identity flex items-center gap-2">
+          <div className="studio-logo rounded-xl bg-gradient-to-tr from-amber-400 to-rose-400 grid place-items-center text-white text-xl font-black">
             𝄢
           </div>
           <div>
@@ -121,18 +121,15 @@ export default function App() {
               <span className="studio-brand text-xl font-black tracking-tight">
                 Ritmo<span className="text-violet-300">Lab</span>
               </span>
-              <span className="bg-amber-100 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+              <span className="studio-edition bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full">
                 Scuola Primaria
               </span>
             </div>
-            <p className="studio-subtitle text-[10px] font-bold -mt-0.5">
-              Body Percussion • Metodo Kodály • Strumentario Orff
-            </p>
           </div>
         </div>
 
         {/* Center: Navigation between Curriculum & Free Sandbox */}
-        <nav aria-label="Modalità" className="studio-nav flex items-center bg-indigo-50 p-1 rounded-2xl border border-indigo-200">
+        <nav aria-label="Modalità" className="studio-nav bg-indigo-50 p-1 rounded-2xl border border-indigo-200">
           <button
             onClick={() => {
               setAppMode('curriculum');
@@ -146,7 +143,7 @@ export default function App() {
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            <span>Percorso Didattico (88 Livelli)</span>
+            <span className="nav-long">Percorso Didattico</span><span className="nav-short">Percorso</span>
           </button>
 
           <button
@@ -162,44 +159,49 @@ export default function App() {
             }`}
           >
             <Sparkles className="w-4 h-4" />
-            <span>Laboratorio Libero (DAW)</span>
+            <span className="nav-long">Laboratorio Libero</span><span className="nav-short">Laboratorio</span>
           </button>
         </nav>
 
         {/* Right Tools: Settings, Instrumentarium modal & Progress summary */}
-        <div className="flex items-center gap-2.5">
+        <div className="studio-actions">
           <button
             onClick={() => setShowSettingsModal(true)}
+            aria-label="Impostazioni"
             className="btn-playful px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-black flex items-center gap-1.5 border border-amber-300"
             title="Impostazioni, Accessibilità (Caratteri LIM, Tolleranza, MIDI)"
           >
             <SettingsIcon className="w-4 h-4 text-amber-800" />
-            <span className="hidden sm:inline">Impostazioni</span>
+            <span className="studio-action-label">Impostazioni</span>
           </button>
 
           <button
             onClick={() => setShowInstrumentarium(true)}
+            aria-label="Strumentario Orff"
+            title="Strumentario Orff"
             className="btn-playful px-3 py-1.5 bg-sky-100 hover:bg-sky-200 text-sky-900 text-xs font-black flex items-center gap-1.5 border border-sky-300"
           >
             <Volume2 className="w-4 h-4 text-sky-700" />
-            <span className="hidden sm:inline">Strumentario Orff</span>
+            <span className="studio-action-label">Strumentario</span>
           </button>
 
           <button
             onClick={() => setShowLevelSelector(true)}
+            aria-label={`Elenco livelli, ${stats.completedLevels} di 88 completati`}
+            title="Elenco livelli"
             className="btn-playful px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-black flex items-center gap-1.5 border border-amber-300"
           >
             <Award className="w-4 h-4 text-amber-600" />
-            <span>{stats.completedLevels}/88 Livelli</span>
+            <span className="studio-action-label">{stats.completedLevels}/88</span>
           </button>
         </div>
       </header>
 
       {/* ----------------- SUB-NAVBAR FOR CURRICULUM LEVEL CONTROLS ----------------- */}
       {appMode === 'curriculum' && (
-        <div className="h-12 bg-amber-50/90 border-b border-amber-200 px-6 flex items-center justify-between flex-shrink-0 z-30">
+        <div className="studio-lesson-nav bg-amber-50/90 border-b border-amber-200">
           {/* Level Switcher (Prev / Level Title / Next) */}
-          <div className="flex items-center gap-3">
+          <div className="studio-level-switch">
             <button
               onClick={handlePrevLevel}
               disabled={!hasPrev}
@@ -209,13 +211,14 @@ export default function App() {
                   : 'opacity-40 cursor-not-allowed text-slate-300 border-transparent'
               }`}
               title="Livello precedente"
+              aria-label="Livello precedente"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
 
             <button
               onClick={() => setShowLevelSelector(true)}
-              className="flex items-center gap-2 px-3 py-1 bg-white hover:bg-amber-100 rounded-xl border border-amber-200 text-xs font-black transition-colors"
+              className="studio-level-picker flex items-center gap-2 bg-white hover:bg-amber-100 rounded-xl border border-amber-200 text-xs font-black transition-colors"
             >
               <span
                 className={`px-1.5 py-0.5 rounded text-[11px] ${
@@ -226,7 +229,7 @@ export default function App() {
               >
                 {currentLevel.id}
               </span>
-              <span className="text-slate-800 max-w-xs truncate">{currentLevel.title}</span>
+              <span className="text-slate-800">{currentLevel.title}</span>
               <span className="text-slate-400">▾</span>
             </button>
 
@@ -239,16 +242,17 @@ export default function App() {
                   : 'opacity-40 cursor-not-allowed text-slate-300 border-transparent bg-slate-100'
               }`}
               title="Passa al prossimo livello"
+              aria-label="Prossimo livello"
             >
-              <span>Prossimo</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
           {/* Level Sub-Mode Tabs (Editor vs Rhythm Tap vs Dictation) */}
-          <div className="flex items-center gap-2">
+          <nav className="studio-activities" aria-label="Attività del livello">
             <button
               onClick={() => setSubMode('editor')}
+              aria-pressed={subMode === 'editor'}
               className={`px-3 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
                 subMode === 'editor'
                   ? 'bg-white text-amber-900 border border-amber-300 shadow-sm'
@@ -256,11 +260,12 @@ export default function App() {
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>Workspace & Notazione</span>
+              <span>Partitura</span>
             </button>
 
             <button
               onClick={() => setSubMode('tap')}
+              aria-pressed={subMode === 'tap'}
               className={`px-3 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
                 subMode === 'tap'
                   ? 'bg-emerald-500 text-white shadow-sm'
@@ -268,12 +273,13 @@ export default function App() {
               }`}
             >
               <Activity className="w-3.5 h-3.5" />
-              <span>Esegui il Ritmo (Tap)</span>
+              <span className="nav-long">Esegui il Ritmo</span><span className="nav-short">Esegui</span>
             </button>
 
             {currentLevel.type === 'dictation' && (
               <button
                 onClick={() => setSubMode('dictation')}
+                aria-pressed={subMode === 'dictation'}
                 className={`px-3 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
                   subMode === 'dictation'
                     ? 'bg-purple-600 text-white shadow-sm'
@@ -281,15 +287,15 @@ export default function App() {
                 }`}
               >
                 <Music className="w-3.5 h-3.5" />
-                <span>Dettato Melodico/Ritmico</span>
+                <span>Dettato</span>
               </button>
             )}
-          </div>
+          </nav>
         </div>
       )}
 
       {/* ----------------- MAIN VIEWPORT ----------------- */}
-      <main className="flex-1 p-4 overflow-hidden relative">
+      <main className="studio-main" key={`${appMode}:${showLevelSelector}:${currentLevelId}:${subMode}`}>
         {showLevelSelector ? (
           <LevelSelector
             currentLevelId={currentLevelId}

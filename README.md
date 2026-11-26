@@ -4,10 +4,10 @@ RitmoLab è un'app desktop offline per la scuola primaria. Riunisce un editor di
 
 ## Scarica e installa
 
-| Sistema | Installer 1.2.0 |
+| Sistema | Installer 1.2.1 |
 | --- | --- |
-| **Windows 10/11 x64** | [RitmoLab-1.2.0-Windows-x64.exe](https://github.com/MaestroLivio/RitmoLab/releases/download/v1.2.0/RitmoLab-1.2.0-Windows-x64.exe) |
-| **macOS 12 o successivo, Apple Silicon** | [RitmoLab-1.2.0-macOS-arm64.dmg](https://github.com/MaestroLivio/RitmoLab/releases/download/v1.2.0/RitmoLab-1.2.0-macOS-arm64.dmg) |
+| **Windows 10/11 x64** | [RitmoLab-1.2.1-Windows-x64.exe](https://github.com/MaestroLivio/RitmoLab/releases/download/v1.2.1/RitmoLab-1.2.1-Windows-x64.exe) |
+| **macOS 12 o successivo, Apple Silicon** | [RitmoLab-1.2.1-macOS-arm64.dmg](https://github.com/MaestroLivio/RitmoLab/releases/download/v1.2.1/RitmoLab-1.2.1-macOS-arm64.dmg) |
 
 Dalla 1.2, la [release corrente](https://github.com/MaestroLivio/RitmoLab/releases/latest) contiene solo questi due installer. Le versioni Intel, Linux, ChromeOS, portable e HTML non sono più prodotte. Le vecchie release restano consultabili.
 
@@ -15,11 +15,15 @@ Gli installer includono l'app, i campioni e i caratteri musicali. Per installare
 
 ## Scrivi e ascolta una partitura
 
-1. Apri **Laboratorio libero**. Scegli ritmo o melodia; per la melodia puoi usare il pentagramma, il bigramma, il trigramma o il doppio rigo.
+1. Apri **Laboratorio libero → Strumenti**. Scegli ritmo o melodia; per la melodia puoi usare il pentagramma, il bigramma, il trigramma o il doppio rigo.
 2. Scegli **Blocchi** per lavorare con le durate proporzionali oppure **Notazione** per modificare il rigo con figure convenzionali. Usa il menu del metro per cambiare tra 2/4, 3/4, 4/4 e 6/8.
 3. Scegli una nota o una pausa nella tavolozza e fai clic sul rigo. Seleziona una figura già inserita per cambiarne la durata o l'alterazione. Nel laboratorio puoi usare anche il punto di valore; i valori inferiori al sedicesimo non sono previsti.
 4. Trascina per spostare la figura. Da tastiera: **Tab** porta al rigo, **frecce** spostano il cursore, **Invio** inserisce, **Maiusc + frecce** sposta la figura selezionata e **Canc** la elimina. Le frecce sopra l'editor annullano e ripristinano; dal rigo funzionano anche **Ctrl/⌘+Z** e **Ctrl/⌘+Maiusc+Z**.
-5. Premi **Ascolta**. Le crome e semicrome consecutive si raggruppano per pulsazione; le note che oltrepassano una battuta sono mostrate con una legatura. Il rigo doppio permette di inserire e riprodurre due voci. Nel laboratorio il menu **Progetti** salva e richiama il lavoro.
+5. Premi **Ascolta**. Le crome e semicrome consecutive si raggruppano per pulsazione; le note che oltrepassano una battuta sono mostrate con una legatura. Il rigo doppio permette di inserire e riprodurre due voci. Nel laboratorio **I miei brani** salva e richiama il lavoro.
+
+La partitura si adatta alla larghezza della finestra. Usa le frecce o il menu **Battute** per cambiare pagina: durante l’ascolto, la pagina segue automaticamente la musica. Nelle finestre basse, il doppio rigo mostra una voce alla volta in modalità **Auto**; con **Voci** puoi scegliere quale mostrare oppure visualizzarle entrambe. La riproduzione non cambia.
+
+L’interfaccia si adatta da 540×420 fino a schermi 1920×1080. Con la finestra bassa, i comandi secondari si raccolgono sotto **Strumenti** e **Verifica**; l’elenco dei livelli si organizza per aree e le finestre di dialogo restano interamente raggiungibili. Le tre dimensioni del testo in **Impostazioni** usano il ridimensionamento del sistema: a 130% note, righi e comandi crescono insieme senza tagliare contenuti.
 
 L'editor è pensato per lo studio: non sostituisce un programma di impaginazione professionale e non esporta MusicXML, MIDI o PDF.
 

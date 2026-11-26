@@ -26,8 +26,8 @@ export default function InstrumentariumModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl p-6 max-w-2xl w-full shadow-2xl border-2 border-amber-200 overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="studio-overlay fixed inset-0 bg-black/40 backdrop-blur-sm z-50">
+      <div className="studio-dialog bg-white rounded-3xl p-4 max-w-2xl w-full shadow-2xl border-2 border-amber-200">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-amber-100">
           <div>
@@ -40,19 +40,20 @@ export default function InstrumentariumModal({ isOpen, onClose }) {
           </div>
           <button
             onClick={onClose}
+            aria-label="Chiudi strumentario"
             className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-4 space-y-6">
+        <div className="py-4 space-y-6">
           {/* Body Percussion */}
           <div>
             <h4 className="text-xs font-black uppercase tracking-wider text-sky-800 mb-2">
               Body Percussion (Il Corpo come Strumento)
             </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="dictation-options">
               {bodyPercussionList.map((item) => (
                 <div
                   key={item.id}
@@ -65,11 +66,11 @@ export default function InstrumentariumModal({ isOpen, onClose }) {
                   >
                     {item.icon}
                   </div>
-                  <div className="flex-1 overflow-hidden">
-                    <span className="text-sm font-black text-slate-800 group-hover:text-amber-900 block truncate">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-black text-slate-800 group-hover:text-amber-900 block">
                       {item.name}
                     </span>
-                    <span className="text-[11px] text-slate-500 line-clamp-1">
+                    <span className="text-xs text-slate-600">
                       {item.desc}
                     </span>
                   </div>
@@ -84,7 +85,7 @@ export default function InstrumentariumModal({ isOpen, onClose }) {
             <h4 className="text-xs font-black uppercase tracking-wider text-amber-800 mb-2">
               Strumentario Didattico Orff
             </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="dictation-options">
               {orffInstruments.map((item) => (
                 <div
                   key={item.id}
@@ -97,11 +98,11 @@ export default function InstrumentariumModal({ isOpen, onClose }) {
                   >
                     {item.icon}
                   </div>
-                  <div className="flex-1 overflow-hidden">
-                    <span className="text-sm font-black text-slate-800 group-hover:text-amber-900 block truncate">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-black text-slate-800 group-hover:text-amber-900 block">
                       {item.name}
                     </span>
-                    <span className="text-[11px] text-slate-500 line-clamp-1">
+                    <span className="text-xs text-slate-600">
                       {item.desc}
                     </span>
                   </div>

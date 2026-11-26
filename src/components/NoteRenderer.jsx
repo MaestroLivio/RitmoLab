@@ -48,6 +48,7 @@ export default function NoteRenderer({
   note,
   viewMode = 'blocks', // 'blocks' | 'conventional'
   stepWidth = 24,       // pixel width per 16th note
+  visibleDuration,
   rowHeight = 36,       // pixel height per pitch/sound row
   indent = 0,           // left gutter (px) reserved for clef + time signature
   showChironomy = true,
@@ -55,7 +56,7 @@ export default function NoteRenderer({
   onSelect = null,
   onDelete = null,
 }) {
-  const widthPx = Math.max(stepWidth * (note.duration || 4) - 4, 18);
+  const widthPx = Math.max(stepWidth * (visibleDuration ?? (note.duration || 4)) - 2, 1);
   const leftPx = indent + note.step * stepWidth;
   const isRest = !!note.isRest;
 
@@ -78,7 +79,7 @@ export default function NoteRenderer({
           e.stopPropagation();
           if (onSelect) onSelect(note);
         }}
-        className={`absolute top-1 bottom-1 rounded-xl flex items-center justify-between px-2 cursor-grab active:cursor-grabbing transition-all select-none border-2 shadow-playful-sm ${
+        className={`absolute top-1 bottom-1 rounded-lg flex items-center justify-between px-1 cursor-grab active:cursor-grabbing transition-colors select-none border shadow-playful-sm ${
           isSelected ? 'ring-4 ring-purple-400 ring-offset-2 z-20 scale-[1.02]' : 'z-10'
         } ${isRest ? 'bg-slate-200/90 border-slate-400 border-dashed' : ''}`}
         style={{
@@ -114,7 +115,7 @@ export default function NoteRenderer({
         </div>
 
         {/* Duration badge for educational math */}
-        {widthPx > 36 && (
+        {widthPx > 125 && (
           <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-white/80 text-slate-800 ml-1 shadow-xs">
             {note.duration === 16 ? 'Intero 4/4' : note.duration === 8 ? 'Metà 2/4' : note.duration === 4 ? 'Quarto 1/4' : note.duration === 2 ? 'Ottavo 1/8' : 'Sedicesimo 1/16'}
           </span>

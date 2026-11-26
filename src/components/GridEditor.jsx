@@ -37,6 +37,7 @@ import { settingsManager } from '../engine/SettingsManager';
 import ProjectManagerModal from './ProjectManagerModal';
 import { ScoreStaff, ScoreNotes } from './ScoreEngraving';
 import { getMeter } from '../engine/Transport';
+import { scorePage } from '../engine/ScoreLayout';
 
 const SECOND_VOICE = PENTAGRAM_ROWS.map(row => ({ ...row, id: `v2:${row.id}`, voice: 2 }));
 const DUAL_ROWS = [...PENTAGRAM_ROWS, ...SECOND_VOICE];
@@ -80,7 +81,7 @@ export default function GridEditor({
   const [isLooping, setIsLooping] = useState(() => settingsManager.get('continuousLoop') || false);
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [playheadPosPx, setPlayheadPosPx] = useState(0);
+  const [playheadPosition, setPlayheadPosition] = useState(0);
   const [currentBeat, setCurrentBeat] = useState(1);
   const [beatProgress, setBeatProgress] = useState(0);
   const [bpm, setBpm] = useState(levelConfig?.bpm || 85);
@@ -114,11 +115,34 @@ export default function GridEditor({
 
   const gridContainerRef = useRef(null);
   const staffAreaRef = useRef(null);
-  const rowLabelsRef = useRef(null);
+  const fontProbeRef = useRef(null);
+  const [scoreWidth, setScoreWidth] = useState(420);
+  const [rootFont, setRootFont] = useState(16);
+  const [viewportHeight, setViewportHeight] = useState(() => window.innerHeight);
+  const [voiceView, setVoiceView] = useState('auto');
+  const [pageAnchor, setPageAnchor] = useState(0);
+  const [toolsOpen, setToolsOpen] = useState(false);
 
-  // Dimensions
-  const stepWidth = 32; // px per 16th note
-  const rowHeight = viewMode === 'conventional' ? 16 : 44;
+  useEffect(() => {
+    const target = gridContainerRef.current;
+    const observer = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        if (entry.target === target) setScoreWidth(Math.floor(entry.contentRect.width));
+        else setRootFont(entry.contentRect.width);
+      }
+    });
+    observer.observe(target);
+    observer.observe(fontProbeRef.current);
+    const onResize = () => setViewportHeight(window.innerHeight);
+    window.addEventListener('resize', onResize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', onResize);
+    };
+  }, []);
+
+  const rowHeight = viewMode === 'conventional' ? Math.max(16, Math.ceil(rootFont * .84))
+    : viewportHeight < 44 * rootFont ? 26 : Math.max(30, Math.ceil(rootFont * 1.35));
 
   // Sixteenths per measure based on active Time Signature
   const { barSteps: sixteenthsPerBar } = getMeter(timeSignature);
@@ -140,10 +164,23 @@ export default function GridEditor({
 
   // Left gutter reserved for clef + time signature, so notes/bar lines
   // start AFTER them in conventional notation instead of overlapping.
-  const showClef = staffType === 'pentagram' || staffType === 'dual';
-  const staffIndent = showClef ? 86 : viewMode === 'conventional' ? 18 : 0;
+  const showClef = viewMode === 'conventional' && (staffType === 'pentagram' || staffType === 'dual');
+  const staffIndent = showClef ? Math.min(Math.round(86 * rowHeight / 16), Math.max(36, Math.floor(scoreWidth * .28)))
+    : viewMode === 'conventional' ? 18 : 0;
+  const playing = isPlaying || isPlayingTarget;
+  const layout = scorePage({ width: scoreWidth, indent: staffIndent, barSteps: sixteenthsPerBar, bars: totalBars,
+    anchorStep: playing ? playheadPosition : pageAnchor });
+  const { stepWidth, start: pageStart, steps: pageSteps, visibleBars, firstBar } = layout;
+  const pageEnd = pageStart + pageSteps;
+  const pageWidth = staffIndent + pageSteps * stepWidth;
+  const jumpToPage = (page) => {
+    const step = page * layout.barsPerPage * sixteenthsPerBar;
+    setPageAnchor(step);
+    setCursor(position => ({ ...position, step }));
+    setSelectedNoteId(null);
+  };
 
-  const activeRows = React.useMemo(() => {
+  const allRows = React.useMemo(() => {
     if (isSandbox) {
       if (sandboxMode === 'rhythm') {
         // Tablatura Ritmica: all 9 Body Percussion + Orff instruments
@@ -176,6 +213,10 @@ export default function GridEditor({
     const filteredPerc = PERCUSSION_ROWS.filter(r => settingsManager.isInstrumentEnabled(r.id));
     return filteredPerc.length > 0 ? filteredPerc : PERCUSSION_ROWS;
   }, [isSandbox, sandboxMode, sandboxStaff, staffType, isMelodic, forcePentagramStaff, levelConfig]);
+  const automaticVoice = viewportHeight < 34 * rootFont ? 'first' : 'both';
+  const shownVoice = voiceView === 'auto' ? automaticVoice : voiceView;
+  const activeRows = staffType !== 'dual' || shownVoice === 'both' ? allRows
+    : allRows.filter(row => shownVoice === 'second' ? row.voice === 2 : row.voice !== 2);
 
   // Sync initial notes if prop changes
   useEffect(() => {
@@ -250,7 +291,7 @@ export default function GridEditor({
           {
             defaultSound: 'clap',
             notes: notes.map(n => {
-              const row = activeRows.find(r => r.id === n.rowId);
+              const row = allRows.find(r => r.id === n.rowId);
               return {
                 step: n.step,
                 duration: n.duration || 4,
@@ -271,14 +312,14 @@ export default function GridEditor({
         score,
         (progress) => {
           setCurrentStep(progress.step);
-          setPlayheadPosPx(progress.position * stepWidth);
+          setPlayheadPosition(progress.position);
           setCurrentBeat(progress.measureBeat);
           setBeatProgress(progress.beatProgress);
         },
         () => {
           setIsPlaying(false);
           setCurrentStep(0);
-          setPlayheadPosPx(0);
+          setPlayheadPosition(0);
           setCurrentBeat(1);
         }
       );
@@ -314,14 +355,14 @@ export default function GridEditor({
       score,
       (progress) => {
         setCurrentStep(progress.step);
-          setPlayheadPosPx(progress.position * stepWidth);
+          setPlayheadPosition(progress.position);
         setCurrentBeat(progress.measureBeat);
         setBeatProgress(progress.beatProgress);
       },
       () => {
         setIsPlayingTarget(false);
         setCurrentStep(0);
-        setPlayheadPosPx(0);
+        setPlayheadPosition(0);
         setCurrentBeat(1);
       }
     );
@@ -332,7 +373,7 @@ export default function GridEditor({
     setIsPlaying(false);
     setIsPlayingTarget(false);
     setCurrentStep(0);
-    setPlayheadPosPx(0);
+    setPlayheadPosition(0);
     setCurrentBeat(1);
   };
 
@@ -367,11 +408,11 @@ export default function GridEditor({
     const relX = clientX - rect.left - staffIndent;
     const relY = clientY - rect.top;
 
-    if (relX < 0 || relY < 0 || relX >= totalSteps * stepWidth || relY >= activeRows.length * rowHeight) return null;
+    if (relX < 0 || relY < 0 || relX >= pageSteps * stepWidth || relY >= activeRows.length * rowHeight) return null;
 
     // Snap to 1/16th note on X
     const rawStep = Math.floor(relX / stepWidth);
-    const step = Math.max(0, Math.min(totalSteps - 1, rawStep));
+    const step = pageStart + rawStep;
 
     // Snap to row on Y
     const rawRowIdx = Math.floor(relY / rowHeight);
@@ -389,11 +430,12 @@ export default function GridEditor({
   };
 
   const handleGridClick = (e) => {
-    if (isReadOnly) return;
+    if (isReadOnly || playing) return;
     const snap = calculateSnap(e.clientX, e.clientY);
     if (!snap) return;
     staffAreaRef.current?.focus({ preventScroll: true });
     setCursor({ step: snap.step, row: snap.rowIdx });
+    setPageAnchor(snap.step);
     insertAt(snap);
   };
 
@@ -443,7 +485,7 @@ export default function GridEditor({
   };
 
   const handleStartDragExisting = (note, e) => {
-    if (isReadOnly || e.button !== 0) return;
+    if (isReadOnly || playing || e.button !== 0) return;
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
     setDraggedNote(note);
@@ -504,9 +546,9 @@ export default function GridEditor({
     !notes.some(other => other.id !== note.id && other.step === spot.step && other.rowId === spot.rowId);
 
   const handleScoreKeys = (e) => {
-    if (isReadOnly || e.altKey) return;
+    if (isReadOnly || playing || e.altKey) return;
     const row = Math.min(cursor.row, activeRows.length - 1);
-    const step = Math.min(cursor.step, totalSteps - 1);
+    const step = Math.max(pageStart, Math.min(cursor.step, pageEnd - 1));
     const note = notes.find(item => item.id === selectedNoteId);
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
       e.preventDefault();
@@ -533,17 +575,9 @@ export default function GridEditor({
         updateNotes(notes.map(item => item.id === note.id ? { ...item, ...spot } : item));
       } else setSelectedNoteId(notes.find(item => item.step === nextStep && item.rowId === target.id)?.id ?? null);
       setCursor({ row: nextRow, step: nextStep });
-      const scroller = gridContainerRef.current;
-      if (scroller) {
-        const x = staffIndent + nextStep * stepWidth;
-        if (x < scroller.scrollLeft) scroller.scrollLeft = x;
-        else if (x + stepWidth > scroller.scrollLeft + scroller.clientWidth) scroller.scrollLeft = x + stepWidth - scroller.clientWidth;
-        const y = nextRow * rowHeight;
-        if (y < scroller.scrollTop) scroller.scrollTop = y;
-        else if (y + rowHeight + 32 > scroller.scrollTop + scroller.clientHeight) {
-          scroller.scrollTop = y + rowHeight + 32 - scroller.clientHeight;
-        }
-      }
+      setPageAnchor(nextStep);
+      requestAnimationFrame(() => staffAreaRef.current?.querySelector('.score-cursor')
+        ?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
     }
   };
 
@@ -567,9 +601,9 @@ export default function GridEditor({
   };
 
   // Collapsible interface sections to maximize workspace
-  const [showRightPanel, setShowRightPanel] = useState(true);
+  const [showRightPanel, setShowRightPanel] = useState(false);
   const [showPalette, setShowPalette] = useState(true);
-  const [showDidacticCard, setShowDidacticCard] = useState(true);
+  const [showDidacticCard, setShowDidacticCard] = useState(false);
 
   // -------------------------------------------------------------
   // MATHEMATICAL BAR SUM CALCULATION (4/4 Fraction Verification)
@@ -650,11 +684,12 @@ export default function GridEditor({
 
   return (
     <div
-      className="studio-panel score-editor flex flex-col h-full overflow-hidden select-none"
+      className="studio-panel score-editor flex flex-col select-none"
       onPointerMove={handleMouseMove}
       onPointerUp={handleMouseUp}
       onPointerCancel={() => { setDraggedNote(null); setGhostSnap(null); }}
     >
+      <span className="score-font-probe" ref={fontProbeRef} aria-hidden="true" />
       {/* ----------------- DIDACTIC EXPLANATION CARD (For Curriculum levels) ----------------- */}
       {showDidacticCard && !isSandbox && levelConfig && (
         <div className="px-5 pt-3">
@@ -671,9 +706,9 @@ export default function GridEditor({
       )}
 
       {/* ----------------- TOP TOOLBAR ----------------- */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-2.5 bg-white/95 border-b-2 border-amber-100 z-30">
+      <div className="score-toolbar bg-white/95 border-b border-indigo-100">
         {/* Left: Playback & Stop Controls */}
-        <div className="flex items-center gap-2">
+        <div className="score-control-group">
           <button
             onClick={handleTogglePlay}
             className={`btn-playful px-4 py-2 flex items-center gap-2 text-white text-sm ${
@@ -687,7 +722,16 @@ export default function GridEditor({
           </button>
           <button type="button" className="editor-icon" onClick={goBack} disabled={!undo.length || isReadOnly} title="Annulla (Ctrl/⌘+Z)" aria-label="Annulla">↶</button>
           <button type="button" className="editor-icon" onClick={goForward} disabled={!redo.length || isReadOnly} title="Ripristina (Ctrl/⌘+Maiusc+Z)" aria-label="Ripristina">↷</button>
+          <button type="button" className="editor-icon" aria-controls="score-tools" aria-expanded={toolsOpen}
+            onClick={() => setToolsOpen(open => !open)}>Strumenti</button>
+          <button type="button" className="editor-icon" aria-expanded={showRightPanel}
+            onClick={() => setShowRightPanel(open => !open)}>Verifica</button>
+          {!isSandbox && <button type="button" className="editor-icon" aria-expanded={showDidacticCard}
+            onClick={() => setShowDidacticCard(open => !open)}>Guida</button>}
+        </div>
 
+        <div id="score-tools" className="score-extra" hidden={!toolsOpen}>
+        <div className="score-control-group">
           <button
             onClick={handleStop}
             className="btn-playful px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm flex items-center gap-1.5"
@@ -711,7 +755,7 @@ export default function GridEditor({
             title={isLooping ? 'Ripetizione continua attiva (clicca per disattivare)' : 'Attiva ripetizione continua delle partiture (Loop)'}
           >
             <Repeat className="w-4 h-4" />
-            <span className="hidden sm:inline">{isLooping ? 'Loop Attivo' : 'Ripeti'}</span>
+            <span className="score-tool-label">{isLooping ? 'Loop attivo' : 'Ripeti'}</span>
           </button>
 
           {/* Metronome Toggle */}
@@ -725,13 +769,13 @@ export default function GridEditor({
             title="Metronomo sonoro sui quarti"
           >
             <Clock className="w-4 h-4" />
-            <span className="hidden sm:inline">Metronomo</span>
+            <span className="score-tool-label">Metronomo</span>
           </button>
 
           {/* BPM Slider */}
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50/90 rounded-2xl border border-amber-200 text-xs font-bold text-slate-700">
+          <label className="score-bpm bg-amber-50/90 rounded-xl border border-amber-200 text-xs font-bold text-slate-700">
             <span>BPM:</span>
-            <span className="text-amber-800 w-8">{bpm}</span>
+            <span className="text-amber-800">{bpm}</span>
             <input
               type="range"
               min="50"
@@ -743,68 +787,33 @@ export default function GridEditor({
                 setBpm(val);
                 audioEngine.setBpm(val);
               }}
-              className="w-20 accent-amber-500 cursor-pointer"
+              className="accent-amber-500 cursor-pointer"
             />
-          </div>
+          </label>
         </div>
 
         {/* Center: Laboratorio Libero DAW Switcher OR Dual View Toggle */}
-        <div className="flex items-center gap-2">
+        <div className="score-control-group">
           {/* If in Sandbox: Mode Selector between Tablatura Ritmica and Rigo Melodico */}
           {isSandbox && (
-            <div className="flex items-center bg-amber-100/70 p-1 rounded-2xl border border-amber-300">
-              <button
-                onClick={() => setSandboxMode('rhythm')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
-                  sandboxMode === 'rhythm'
-                    ? 'bg-sky-500 text-white shadow-sm'
-                    : 'text-amber-900 hover:bg-amber-200/60'
-                }`}
-              >
-                <Activity className="w-3.5 h-3.5" />
-                <span>Tablatura Ritmica</span>
-              </button>
-
-              <button
-                 onClick={() => { setSandboxMode('melody'); setViewMode('conventional'); }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
-                  sandboxMode === 'melody'
-                    ? 'bg-purple-600 text-white shadow-sm'
-                    : 'text-amber-900 hover:bg-amber-200/60'
-                }`}
-              >
-                <Music className="w-3.5 h-3.5" />
-                <span>Rigo Melodico</span>
-              </button>
-            </div>
+            <label className="score-control-group text-xs font-bold">
+              Tipo
+              <select aria-label="Tipo di laboratorio" value={sandboxMode} onChange={event => {
+                setSandboxMode(event.target.value);
+                if (event.target.value === 'melody') setViewMode('conventional');
+              }}>
+                <option value="rhythm">Ritmico</option>
+                <option value="melody">Melodico</option>
+              </select>
+            </label>
           )}
-
-          {/* Dual View Toggle: Blocchi Proporzionali vs Notazione Convenzionale */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200">
-            <button
-              onClick={() => setViewMode('blocks')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                viewMode === 'blocks'
-                  ? 'bg-white text-amber-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>Blocchi Proporzionali</span>
-            </button>
-
-            <button
-              onClick={() => setViewMode('conventional')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                viewMode === 'conventional'
-                  ? 'bg-white text-amber-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <Music className="w-3.5 h-3.5" />
-              <span>Notazione Convenzionale</span>
-            </button>
-          </div>
+          <label className="score-control-group text-xs font-bold">
+            Vista
+            <select aria-label="Vista" value={viewMode} onChange={event => setViewMode(event.target.value)}>
+              <option value="blocks">Blocchi</option>
+              <option value="conventional">Notazione</option>
+            </select>
+          </label>
         </div>
 
         {/* Right: Instrument Timbre & Chironomy & Bars Selector */}
@@ -812,40 +821,20 @@ export default function GridEditor({
           {isSandbox && (
             <>
               {/* Measure Count Selector (Extended to 32 bars) */}
-              <div className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-2xl border border-amber-200 text-xs font-bold">
-                <span className="text-slate-500">Battute:</span>
-                {[1, 2, 4, 8, 12, 16, 24, 32].map(b => (
-                  <button
-                    key={b}
-                    onClick={() => setSandboxBars(b)}
-                    className={`px-1.5 py-0.5 rounded-lg transition-all ${
-                      sandboxBars === b
-                        ? 'bg-amber-400 text-amber-950 font-black shadow-xs'
-                        : 'text-slate-600 hover:bg-amber-50'
-                    }`}
-                  >
-                    {b}
-                  </button>
-                ))}
-              </div>
+              <label className="score-control-group text-xs font-bold">
+                Numero di battute
+                <select value={sandboxBars} onChange={event => setSandboxBars(Number(event.target.value))}>
+                  {[1, 2, 4, 8, 12, 16, 24, 32].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
 
               {/* Time Signature Selector */}
-              <div className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-2xl border border-amber-200 text-xs font-bold">
-                <span className="text-slate-500">Tempo:</span>
-                {['4/4', '3/4', '2/4', '6/8'].map(ts => (
-                  <button
-                    key={ts}
-                    onClick={() => setTimeSignature(ts)}
-                    className={`px-2 py-0.5 rounded-lg transition-all ${
-                      timeSignature === ts
-                        ? 'bg-purple-600 text-white font-black shadow-xs'
-                        : 'text-slate-600 hover:bg-purple-50'
-                    }`}
-                  >
-                    {ts}
-                  </button>
-                ))}
-              </div>
+              <label className="score-control-group text-xs font-bold">
+                Metro
+                <select value={timeSignature} onChange={event => setTimeSignature(event.target.value)}>
+                  {['4/4', '3/4', '2/4', '6/8'].map(meter => <option key={meter} value={meter}>{meter}</option>)}
+                </select>
+              </label>
 
               {/* Projects Modal Trigger Button */}
               <button
@@ -982,70 +971,22 @@ export default function GridEditor({
               <span className="text-[9px]">{showPalette ? '▲' : '▼'}</span>
             </button>
 
-            <button
-              onClick={() => setShowRightPanel(!showRightPanel)}
-              className={`btn-playful px-2 py-1 text-[11px] font-black rounded-xl border flex items-center gap-1 transition-all ${
-                showRightPanel
-                  ? 'bg-amber-100 text-amber-900 border-amber-300'
-                  : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
-              }`}
-              title={showRightPanel ? "Nascondi torta e verifica per allargare il rigo" : "Mostra torta e verifica"}
-            >
-              <span>📊 Torta</span>
-              <span className="text-[9px]">{showRightPanel ? '▶' : '◀'}</span>
-            </button>
-
-            {!isSandbox && levelConfig && (
-              <button
-                onClick={() => setShowDidacticCard(!showDidacticCard)}
-                className={`btn-playful px-2 py-1 text-[11px] font-black rounded-xl border flex items-center gap-1 transition-all ${
-                  showDidacticCard
-                    ? 'bg-amber-100 text-amber-900 border-amber-300'
-                    : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
-                }`}
-                title={showDidacticCard ? "Riduci spiegazione didattica" : "Mostra spiegazione didattica"}
-              >
-                <span>📖 Guida</span>
-                <span className="text-[9px]">{showDidacticCard ? '▲' : '▼'}</span>
-              </button>
-            )}
           </div>
         </div>
-      </div>
+        </div>
 
       {/* ----------------- PALETTE: MUSICAL FIGURES (INTERO 4/4, METÀ 2/4, QUARTO 1/4, OTTAVO 1/8, SEDICESIMO 1/16) ----------------- */}
       {showPalette && (
-        <div className="flex items-center justify-between gap-3 px-5 py-2.5 bg-amber-50/70 border-b border-amber-200/80 overflow-x-auto z-20">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-black text-amber-900 uppercase tracking-wider mr-1">
-            Figura:
-          </span>
-
-          {Object.entries(FIGURE_INFO).map(([key, info]) => {
-            // Check if allowed in current level (always allowed in sandbox)
-            if (!isSandbox && levelConfig?.allowedFigures && !levelConfig.allowedFigures.includes(key)) {
-              return null;
-            }
-
-            const isCurrent = selectedFigure === key;
-            return (
-              <button
-                key={key}
-                onClick={() => changeFigure(key)}
-                aria-pressed={isCurrent}
-                className={`btn-playful px-3 py-1.5 flex items-center gap-1.5 text-xs transition-all ${
-                  isCurrent
-                    ? 'bg-amber-400 text-amber-950 shadow-playful-sm scale-105 border-amber-500'
-                    : 'bg-white hover:bg-amber-100 text-slate-700 border border-amber-200'
-                }`}
-                title={`${info.label} (${info.beats} quarti)`}
-              >
-                <span className="text-lg leading-none font-bold">{info.symbol}</span>
-                {/* Display the exact requested pedagogical name: Intero 4/4, Metà 2/4, Quarto 1/4, Ottavo 1/8, Sedicesimo 1/16 */}
-                <span className="font-bold whitespace-nowrap">{info.label}</span>
-              </button>
-            );
-          })}
+         <div className="score-palette score-control-group">
+        <div className="score-control-group">
+          <label className="score-control-group font-bold">
+            Figura
+            <select value={selectedFigure} onChange={event => changeFigure(event.target.value)}>
+              {Object.entries(FIGURE_INFO)
+                .filter(([key]) => isSandbox || !levelConfig?.allowedFigures || levelConfig.allowedFigures.includes(key))
+                .map(([key, info]) => <option key={key} value={key}>{info.symbol} {info.label}</option>)}
+            </select>
+          </label>
           {isSandbox && (
             <button type="button" className="editor-icon" aria-pressed={dotted}
               disabled={selectedFigure.includes('sixteenth')} onClick={() => {
@@ -1057,12 +998,10 @@ export default function GridEditor({
 
         {/* Accidentals (# and b) if enabled or in sandbox */}
         {(isSandbox || levelConfig?.accidentalsEnabled) && (
-          <div className="flex items-center gap-1.5 pl-4 border-l-2 border-amber-200">
-            <span className="text-xs font-black text-amber-900 uppercase tracking-wider mr-1">
-              Alterazione:
-            </span>
+          <div className="score-control-group" role="group" aria-label="Alterazione">
             <button
               onClick={() => changeAccidental(1)}
+              aria-label="Diesis"
               aria-pressed={selectedAccidental === 1}
               className={`btn-playful px-2.5 py-1 text-xs font-black rounded-xl border ${
                 selectedAccidental === 1
@@ -1071,10 +1010,11 @@ export default function GridEditor({
               }`}
               title="Diesis: alza di mezzo tono (♯)"
             >
-              ♯ Diesis
+              <span aria-hidden="true">♯</span><span className="score-tool-label"> Diesis</span>
             </button>
             <button
               onClick={() => changeAccidental(-1)}
+              aria-label="Bemolle"
               aria-pressed={selectedAccidental === -1}
               className={`btn-playful px-2.5 py-1 text-xs font-black rounded-xl border ${
                 selectedAccidental === -1
@@ -1083,28 +1023,61 @@ export default function GridEditor({
               }`}
               title="Bemolle: abbassa di mezzo tono (♭)"
             >
-              ♭ Bemolle
+              <span aria-hidden="true">♭</span><span className="score-tool-label"> Bemolle</span>
             </button>
-            <button type="button" className="editor-icon" aria-pressed={selectedAccidental === 0} onClick={() => changeAccidental(0)}>♮ Naturale</button>
+            <button type="button" className="editor-icon" aria-label="Naturale" aria-pressed={selectedAccidental === 0} onClick={() => changeAccidental(0)}>♮<span className="score-tool-label"> Naturale</span></button>
           </div>
         )}
       </div>
-      )}
-
-      <div className="score-status" role="status">
-        {editMessage || `Battuta ${1 + Math.floor(Math.min(cursor.step, totalSteps - 1) / sixteenthsPerBar)} · ${activeRows[Math.min(cursor.row, activeRows.length - 1)]?.label || ''} · Frecce: naviga · Invio: inserisci · Maiusc + frecce: sposta · Canc: elimina`}
+       )}
       </div>
+
+      {(layout.pageCount > 1 || staffType === 'dual' || playing) && <nav className="score-pages" aria-label="Pagine della partitura">
+        <button type="button" className="editor-icon" disabled={playing || layout.page === 0}
+          aria-label="Pagina precedente" onClick={() => jumpToPage(layout.page - 1)}>←</button>
+        <label className="score-control-group">
+          <span>Battute</span>
+          <select value={layout.page} disabled={playing} aria-label="Vai alle battute"
+            onChange={event => jumpToPage(Number(event.target.value))}>
+            {Array.from({ length: layout.pageCount }, (_, page) => {
+              const first = page * layout.barsPerPage + 1;
+              const last = Math.min(totalBars, first + layout.barsPerPage - 1);
+              return <option key={page} value={page}>{first === last ? first : `${first}–${last}`}</option>;
+            })}
+          </select>
+        </label>
+        <button type="button" className="editor-icon" disabled={playing || layout.page + 1 === layout.pageCount}
+          aria-label="Pagina successiva" onClick={() => jumpToPage(layout.page + 1)}>→</button>
+        <span className="score-page-mode">{playing ? 'Segue la riproduzione' : `${layout.page + 1} / ${layout.pageCount}`}</span>
+        {staffType === 'dual' && (
+          <label className="score-control-group">
+            <span>Voci</span>
+            <select value={voiceView} aria-label="Voci visibili" onChange={event => {
+              setVoiceView(event.target.value);
+              setCursor(position => ({ ...position, row: 0 }));
+              setSelectedNoteId(null);
+            }}>
+              <option value="auto">{automaticVoice === 'first' ? 'Auto: prima voce' : 'Auto: entrambe'}</option>
+              <option value="both">Entrambe</option>
+              <option value="first">Prima voce</option>
+              <option value="second">Seconda voce</option>
+            </select>
+          </label>
+        )}
+        <span className="score-cursor-status" role="status">
+          {!playing && `Battuta ${1 + Math.floor(Math.max(pageStart, Math.min(cursor.step, pageEnd - 1)) / sixteenthsPerBar)} · ${activeRows[Math.min(cursor.row, activeRows.length - 1)]?.label || ''}`}
+        </span>
+      </nav>}
+      {editMessage && <p className="score-status" role="status">{editMessage}</p>}
       {/* ----------------- WORKSPACE BODY: TRACK HEADERS + 2D GRID ----------------- */}
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="score-workspace">
         {/* Track Headers (Left sidebar) */}
-        <div className="w-40 bg-white/95 border-r-2 border-amber-200 flex flex-col z-20 shadow-sm flex-shrink-0">
-          <div className="h-8 border-b border-amber-100 flex items-center justify-between px-3 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-            <span>{isMelodic ? 'Altezza / Nota' : 'Strumento'}</span>
-            <span>Ascolta</span>
+        <div className="score-row-labels bg-white/95 border-r border-indigo-100">
+          <div className="score-timeline-label">
+            {isMelodic ? 'Note' : 'Tracce'}
           </div>
 
-          <div className="flex-1 overflow-hidden">
-            <div ref={rowLabelsRef}>
+          <div>
             {activeRows.map((row) => (
               <button type="button"
                 key={row.id}
@@ -1115,44 +1088,40 @@ export default function GridEditor({
                     audioEngine.playSoundByName(row.sound);
                   }
                 }}
-                className="flex w-full items-center justify-between px-3 border-b border-slate-100/80 cursor-pointer hover:bg-indigo-50 transition-colors group"
+                className="score-row-button flex w-full items-center border-b border-slate-100/80 cursor-pointer hover:bg-indigo-50"
                 style={{ height: `${rowHeight}px` }}
-                title={`Clicca per ascoltare: ${row.label}`}
+                title={`Ascolta: ${row.label}`}
+                aria-label={`Ascolta ${row.voice === 2 ? 'seconda voce, ' : ''}${row.label}`}
               >
                 <div className="flex items-center gap-1.5 overflow-hidden">
-                  {viewMode === 'blocks' && <span className="text-base select-none">{row.icon || '🎵'}</span>}
-                  <span className="text-xs font-black text-slate-700 group-hover:text-amber-800 truncate">
-                    {row.voice === 2 ? 'II · ' : ''}{row.label}
+                  {!isMelodic && <span aria-hidden="true" className="score-row-icon">{row.icon}</span>}
+                  <span className={`font-bold text-slate-700 truncate ${isMelodic ? '' : 'score-track-name'}`}>
+                    {row.voice === 2 ? 'Ⅱ ' : ''}{row.label.split(' (')[0]}
                   </span>
                 </div>
-                <Volume2 className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-600 flex-shrink-0" />
               </button>
             ))}
-            </div>
           </div>
         </div>
 
         {/* 2D Music Grid (Horizontal scrollable) */}
         <div
           ref={gridContainerRef}
-          onScroll={e => {
-            if (rowLabelsRef.current) rowLabelsRef.current.style.transform = `translateY(${-e.currentTarget.scrollTop}px)`;
-          }}
-          className="flex-1 overflow-x-auto overflow-y-auto relative bg-white/80 cursor-default"
+          className="score-viewport bg-white/80"
         >
           {/* Timeline numbers (Top bar of grid) */}
           <div
-            className="h-8 border-b-2 border-amber-200 bg-amber-50/50 flex relative select-none sticky top-0 z-20"
-            style={{ width: `${staffIndent + totalSteps * stepWidth}px` }}
+            className="score-timeline-label bg-amber-50/50 relative"
+            style={{ width: pageWidth }}
           >
-            {Array.from({ length: totalBars }).map((_, barIdx) => (
+            {Array.from({ length: visibleBars }).map((_, barIdx) => (
               <div
                 key={`bar-head-${barIdx}`}
-                className="absolute top-0 bottom-0 border-r-2 border-slate-700 flex items-center px-2 text-xs font-black text-amber-900"
+                 className="score-bar-title absolute top-0 bottom-0 border-r border-slate-700 flex items-center font-black text-amber-900"
                 style={{ left: `${staffIndent + barIdx * sixteenthsPerBar * stepWidth}px`, width: `${sixteenthsPerBar * stepWidth}px` }}
               >
-                <span>Battuta {barIdx + 1}</span>
-                <span className="ml-auto text-[10px] text-amber-700/70 font-bold">{timeSignature}</span>
+                 <span>Battuta {firstBar + barIdx + 1}</span>
+                 <span className="score-bar-meter ml-auto text-[10px] text-amber-700/70 font-bold">{timeSignature}</span>
               </div>
             ))}
           </div>
@@ -1166,24 +1135,25 @@ export default function GridEditor({
             role="group"
             aria-label="Editor della partitura. Frecce per navigare, Invio per inserire, Maiusc e frecce per spostare."
             className="relative cursor-crosshair score-area"
-            style={{ width: `${staffIndent + totalSteps * stepWidth}px` }}
+            style={{ width: pageWidth }}
           >
             {viewMode === 'conventional' ? <>
               <ScoreStaff rows={activeRows} rowHeight={rowHeight} stepWidth={stepWidth} indent={staffIndent}
-                totalSteps={totalSteps} signature={timeSignature} treble={showClef} />
+                totalSteps={pageSteps} signature={timeSignature} treble={showClef} />
               <ScoreNotes rows={activeRows} notes={notes} rowHeight={rowHeight} stepWidth={stepWidth}
-                indent={staffIndent} totalSteps={totalSteps} signature={timeSignature} selectedId={selectedNoteId} />
+                indent={staffIndent} totalSteps={totalSteps} startStep={pageStart} visibleSteps={pageSteps}
+                signature={timeSignature} selectedId={selectedNoteId} />
             </> : <StaffRenderer
-              staffType={staffType}
+              staffType={isMelodic ? 'trigram' : staffType}
               activeRows={activeRows}
               stepWidth={stepWidth}
               rowHeight={rowHeight}
-              totalSteps={totalSteps}
+              totalSteps={pageSteps}
               timeSignature={timeSignature}
               indent={staffIndent}
             />}
             <div className="score-cursor" aria-hidden="true" style={{
-              left: staffIndent + Math.min(cursor.step, totalSteps - 1) * stepWidth,
+              left: staffIndent + (Math.max(pageStart, Math.min(cursor.step, pageEnd - 1)) - pageStart) * stepWidth,
               top: Math.min(cursor.row, activeRows.length - 1) * rowHeight,
               width: stepWidth, height: rowHeight,
             }} />
@@ -1193,7 +1163,7 @@ export default function GridEditor({
               <div
                 className="absolute pointer-events-none rounded-xl border-2 border-dashed border-purple-500 bg-purple-300/30 transition-all z-20"
                 style={{
-                  left: `${staffIndent + ghostSnap.step * stepWidth}px`,
+                   left: `${staffIndent + (ghostSnap.step - pageStart) * stepWidth}px`,
                   top: `${ghostSnap.rowIdx * rowHeight + 2}px`,
                   width: `${(viewMode === 'conventional' ? 1 : (draggedNote?.duration || toolDuration())) * stepWidth - 4}px`,
                   height: `${rowHeight - 4}px`,
@@ -1203,6 +1173,9 @@ export default function GridEditor({
 
             {/* Placed Musical Notes */}
             {notes.map((note) => {
+               const noteEnd = note.step + (note.duration || 4);
+               if (note.step >= pageEnd || noteEnd <= pageStart) return null;
+               const visibleStart = Math.max(note.step, pageStart);
               const rowIdx = activeRows.findIndex(r => r.id === note.rowId);
               if (rowIdx === -1) return null;
 
@@ -1213,8 +1186,16 @@ export default function GridEditor({
 
               return (
                 <div
-                  key={note.id}
+                   key={note.id}
                    onPointerDown={(e) => handleStartDragExisting(note, e)}
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     if (isReadOnly || playing) return;
+                     staffAreaRef.current?.focus({ preventScroll: true });
+                     setSelectedNoteId(note.id);
+                     setCursor({ step: visibleStart, row: rowIdx });
+                     setPageAnchor(visibleStart);
+                   }}
                   style={{
                     position: 'absolute',
                     top: `${topPx}px`,
@@ -1225,22 +1206,24 @@ export default function GridEditor({
                      <button type="button" tabIndex={-1}
                        aria-label={`${note.isRest ? 'Pausa' : activeRows[rowIdx].label}, battuta ${Math.floor(note.step / sixteenthsPerBar) + 1}`}
                        className={`score-note-hit ${isSelected ? 'is-selected' : ''}`}
-                       style={{ left: staffIndent + note.step * stepWidth, width: stepWidth, height: rowHeight }}
-                       onClick={e => {
-                         e.stopPropagation();
-                         staffAreaRef.current?.focus({ preventScroll: true });
-                         setSelectedNoteId(note.id);
-                         setCursor({ step: note.step, row: rowIdx });
-                       }} />
+                       style={{ left: staffIndent + (visibleStart - pageStart) * stepWidth, width: stepWidth, height: rowHeight }}
+                     />
                    ) : <NoteRenderer
-                    note={note}
+                     note={{ ...note, step: visibleStart - pageStart }}
+                     visibleDuration={Math.min(noteEnd, pageEnd) - visibleStart}
                     viewMode={viewMode}
                     stepWidth={stepWidth}
                     rowHeight={rowHeight}
                     indent={staffIndent}
                     showChironomy={showChironomy}
                     isSelected={isSelected}
-                    onSelect={(n) => setSelectedNoteId(n.id)}
+                     onSelect={() => {
+                       if (isReadOnly || playing) return;
+                       setSelectedNoteId(note.id);
+                       setCursor({ step: visibleStart, row: rowIdx });
+                       setPageAnchor(visibleStart);
+                       staffAreaRef.current?.focus({ preventScroll: true });
+                     }}
                    />}
                 </div>
               );
@@ -1250,7 +1233,7 @@ export default function GridEditor({
             {(isPlaying || isPlayingTarget) && (
               <div
                  className="absolute top-0 bottom-0 w-[2px] bg-violet-600 pointer-events-none z-30"
-                 style={{ transform: `translate3d(${staffIndent + playheadPosPx}px, 0, 0)` }}
+                   style={{ transform: `translate3d(${staffIndent + Math.min(pageSteps, playheadPosition - pageStart) * stepWidth}px, 0, 0)` }}
               >
                 {/* Glowing Playhead cap */}
                 <div className="absolute -top-1.5 -left-1.5 w-4 h-4 bg-rose-600 rounded-full border-2 border-white shadow-md animate-pulse" />
@@ -1258,10 +1241,17 @@ export default function GridEditor({
             )}
           </div>
         </div>
+      </div>
 
         {/* Right Floating Widget: Animated Pie Chart & Mathematical Bar Verification */}
         {showRightPanel && (
-          <div className="w-56 bg-amber-50/60 border-l-2 border-amber-200 p-4 flex flex-col justify-between overflow-y-auto z-20 flex-shrink-0 animate-fade-in">
+           <dialog className="studio-dialog score-inspector bg-white rounded-2xl border border-indigo-200"
+             aria-label="Verifica delle battute" ref={dialog => { if (dialog && !dialog.open) dialog.showModal(); }}
+             onClose={() => setShowRightPanel(false)}>
+             <div className="score-inspector-header">
+               <h3 className="font-bold">Verifica delle battute</h3>
+               <form method="dialog"><button type="submit" className="editor-icon">Chiudi</button></form>
+             </div>
             <div>
               {/* Animated Pie Chart with Solfeggio Conducting Order & Note Duration Filling */}
               <PieCycleChart
@@ -1285,7 +1275,7 @@ export default function GridEditor({
                 </div>
 
                 <div className="space-y-2">
-                  {barFractions.map((bar) => (
+                   {barFractions.slice(firstBar, firstBar + visibleBars).map((bar) => (
                     <div
                       key={`bar-status-${bar.barNumber}`}
                       className={`p-2 rounded-xl text-xs font-bold border transition-colors ${
@@ -1297,9 +1287,9 @@ export default function GridEditor({
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span>Battuta {bar.barNumber}:</span>
-                        <span className="font-black">{bar.totalSixteenths}/{sixteenthsPerBar} sedicesimi</span>
-                      </div>
+                         <span>Battuta {bar.barNumber}:</span>
+                         <span className="font-black">{bar.totalSixteenths}/{sixteenthsPerBar} sedicesimi</span>
+                       </div>
 
                       <div className="mt-1 flex items-center gap-1 text-[11px]">
                         {bar.isComplete ? (
@@ -1334,9 +1324,8 @@ export default function GridEditor({
                 <li>La battuta è completa quando fa {timeSignature}.</li>
               </ul>
             </div>
-          </div>
+          </dialog>
         )}
-      </div>
 
       {/* Free Projects Save & Load Modal */}
       <ProjectManagerModal

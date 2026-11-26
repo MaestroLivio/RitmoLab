@@ -81,8 +81,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 840,
-    minWidth: 1024,
-    minHeight: 700,
+    minWidth: 540,
+    minHeight: 420,
     title: 'RitmoLab — Laboratorio Musicale',
     backgroundColor: '#FFFBEB',
     show: false,

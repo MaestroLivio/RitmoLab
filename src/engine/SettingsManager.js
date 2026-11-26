@@ -136,7 +136,7 @@ export class SettingsManager {
   applyRootFontSize() {
     if (typeof document === 'undefined') return;
     const fontConfig = FONT_SIZES[this.settings.fontSize] || FONT_SIZES.large;
-    document.documentElement.style.fontSize = `${fontConfig.zoom * 16}px`;
+    document.documentElement.style.fontSize = `${Math.round(fontConfig.zoom * 100)}%`;
   }
 
   subscribe(callback) {

@@ -99,8 +99,8 @@ export default function ProjectManagerModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/45 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none">
-      <div className="bg-white rounded-3xl p-6 max-w-xl w-full shadow-2xl border-2 border-amber-200 overflow-hidden flex flex-col max-h-[90vh] animate-fade-in">
+    <div className="studio-overlay fixed inset-0 bg-black/45 backdrop-blur-sm z-50 select-none">
+      <div className="studio-dialog bg-white rounded-3xl p-4 max-w-xl w-full shadow-2xl border-2 border-amber-200">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b-2 border-amber-100">
           <div className="flex items-center gap-2.5">
@@ -153,7 +153,7 @@ export default function ProjectManagerModal({
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto py-3 space-y-4">
+        <div className="py-3 space-y-4">
           {activeTab === 'save' ? (
             <div className="space-y-4">
               {/* Current Score Summary */}

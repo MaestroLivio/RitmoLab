@@ -38,28 +38,28 @@ export default function DidacticExplanationCard({
   return (
     <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-3xl p-4 shadow-playful-sm mb-3 transition-all select-none">
       {/* Top Bar: Title, badges, and toggle */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-xl bg-amber-400 flex items-center justify-center text-amber-950 font-black text-sm shadow-xs flex-shrink-0">
             📖
           </div>
-          <div className="overflow-hidden">
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] font-black uppercase tracking-wider bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-md">
                 Spiegazione Didattica
               </span>
-              <span className="text-xs font-bold text-slate-500 truncate">
+              <span className="text-xs font-bold text-slate-500">
                 {level.areaTitle}
               </span>
             </div>
-            <h3 className="text-sm font-black text-slate-800 truncate">
+            <h3 className="text-sm font-black text-slate-800">
               {level.id}: {level.title}
             </h3>
           </div>
         </div>
 
         {/* Action: Listen to Correct Version button & Collapse Toggle */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={isPlayingTarget ? onStopTarget : onPlayTarget}
             className={`btn-playful px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all text-white shadow-sm ${

@@ -26,9 +26,9 @@ export function ScoreStaff({ rows, rowHeight, stepWidth, indent, totalSteps, sig
               stroke="#25304a" strokeWidth={x >= width - 2 ? 2.5 : 1.3} />;
           })}
           {treble && <>
-            <text x="8" y={ys.at(-2)} stroke="none" fill="#182746" className="music-glyph" fontSize={rowHeight * 5}>{"\uE050"}</text>
-            <text x="67" y={middle - rowHeight} stroke="none" fill="#182746" dominantBaseline="central" textAnchor="middle" fontSize={rowHeight * 1.6} fontWeight="800">{top}</text>
-            <text x="67" y={middle + rowHeight} stroke="none" fill="#182746" dominantBaseline="central" textAnchor="middle" fontSize={rowHeight * 1.6} fontWeight="800">{bottom}</text>
+            <text x={Math.min(8, indent * .09)} y={ys.at(-2)} stroke="none" fill="#182746" className="music-glyph" fontSize={Math.min(rowHeight * 5, indent * .88)}>{"\uE050"}</text>
+            <text x={indent * .78} y={middle - rowHeight} stroke="none" fill="#182746" dominantBaseline="central" textAnchor="middle" fontSize={Math.min(rowHeight * 1.6, indent * .29)} fontWeight="800">{top}</text>
+            <text x={indent * .78} y={middle + rowHeight} stroke="none" fill="#182746" dominantBaseline="central" textAnchor="middle" fontSize={Math.min(rowHeight * 1.6, indent * .29)} fontWeight="800">{bottom}</text>
           </>}
         </g>;
       })}
@@ -36,9 +36,12 @@ export function ScoreStaff({ rows, rowHeight, stepWidth, indent, totalSteps, sig
   );
 }
 
-export function ScoreNotes({ notes, rows, rowHeight, stepWidth, indent, totalSteps, signature, selectedId }) {
+export function ScoreNotes({ notes, rows, rowHeight, stepWidth, indent, totalSteps,
+  startStep = 0, visibleSteps = totalSteps, signature, selectedId }) {
   const { barSteps } = getMeter(signature);
-  const xAt = step => indent + (step + 0.5) * stepWidth;
+  const endStep = startStep + visibleSteps;
+  const width = indent + visibleSteps * stepWidth;
+  const xAt = step => indent + (step - startStep + 0.5) * stepWidth;
   const altered = new Map();
   const parts = [...notes].sort((a, b) => a.step - b.step).flatMap(note => {
     const row = rows.findIndex(candidate => candidate.id === note.rowId);
@@ -59,19 +62,22 @@ export function ScoreNotes({ notes, rows, rowHeight, stepWidth, indent, totalSte
       stemUp: !meta.pitch || restRow < 0 || row > restRow,
       accidental: i === 0 && !note.isRest && meta.pitch && accidental !== previous ? accidental : null,
     }));
-  });
+  }).filter(part => part.step >= startStep && part.step < endStep);
   const beams = groupBeams(parts, signature);
   const beamed = new Set(beams.flatMap(group => group.map(note => note.key)));
   const ink = '#172341';
   return (
     <svg className="absolute inset-0 overflow-visible pointer-events-none" aria-hidden="true"
-      width={indent + totalSteps * stepWidth} height={rows.length * rowHeight}>
+      width={width} height={rows.length * rowHeight}>
       {parts.map(part => <g key={part.key}>
         <StaffGlyph x={part.x} y={part.y} duration={part.duration} ledger={part.ledger}
           stemUp={part.stemUp} accidental={part.accidental} rest={part.isRest} beamed={beamed.has(part.key)}
           color={part.id === selectedId ? '#5a35c8' : ink} />
         {part.tiedTo && part.step + part.duration < totalSteps && <path
-          d={`M${part.x + 7} ${part.y + 7} Q${part.x + part.duration * stepWidth / 2} ${part.y + 21} ${xAt(part.step + part.duration) - 7} ${part.y + 7}`}
+          d={`M${part.x + 7} ${part.y + 7} Q${part.x + part.duration * stepWidth / 2} ${part.y + 21} ${Math.min(width - 1, xAt(part.step + part.duration) - 7)} ${part.y + 7}`}
+          fill="none" stroke={ink} strokeWidth="1.5" />}
+        {part.tiedFrom && part.step === startStep && <path
+          d={`M${indent - 2} ${part.y + 12} Q${indent + 1} ${part.y + 17} ${part.x - 5} ${part.y + 7}`}
           fill="none" stroke={ink} strokeWidth="1.5" />}
       </g>)}
       {beams.map(group => {

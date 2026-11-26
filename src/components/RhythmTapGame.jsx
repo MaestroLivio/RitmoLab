@@ -112,6 +112,23 @@ export default function RhythmTapGame({
   const evaluatorRef = useRef(null);
   const timelineRef = useRef(null);
   const sessionRef = useRef(0);
+  const [railWidth, setRailWidth] = useState(760);
+  const [compactHeight, setCompactHeight] = useState(() => matchMedia('(max-height: 34em)').matches);
+  useEffect(() => {
+    const query = matchMedia('(max-height: 34em)');
+    const change = () => setCompactHeight(query.matches);
+    query.addEventListener('change', change);
+    return () => query.removeEventListener('change', change);
+  }, []);
+  const railObserver = useRef(null);
+  const bindRail = useCallback(node => {
+    railObserver.current?.disconnect();
+    if (!node) return;
+    setRailWidth(node.clientWidth);
+    railObserver.current = new ResizeObserver(([entry]) => setRailWidth(entry.contentRect.width));
+    railObserver.current.observe(node);
+  }, []);
+  const pixelsPerStep = Math.min(48, Math.max(22, (railWidth - 110) / 12));
 
   const isMelodic = level?.section === 'melody';
   const bpm = level?.bpm || 85;
@@ -129,7 +146,10 @@ export default function RhythmTapGame({
   };
   const visibleSounds = ALL_RHYTHMIC_ROWS.filter(row =>
     level.targetNotes?.some(note => !note.isRest && (note.sound || 'clap') === row.sound));
-  const rhythmY = index => visibleSounds.length === 1 ? 116 : 34 + index * Math.min(40, 162 / Math.max(1, visibleSounds.length - 1));
+  const railHeight = isMelodic ? (compactHeight ? 168 : 216)
+    : visibleSounds.length <= 3 ? (compactHeight ? 72 : 144) : (compactHeight ? 112 : 184);
+  const rhythmY = index => visibleSounds.length <= 1 ? railHeight / 2
+    : 27 + index * ((railHeight - 54) / (visibleSounds.length - 1));
 
   // Filter keys based on current level's allowed pitches or show all
   const activePitchKeys = React.useMemo(() => {
@@ -398,11 +418,11 @@ export default function RhythmTapGame({
   };
 
   return (
-    <div className="studio-panel exercise-panel flex flex-col h-full p-4 lg:p-6 overflow-hidden select-none">
+    <div className="studio-panel exercise-panel flex flex-col select-none">
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b-2 border-amber-100 flex-shrink-0">
+      <div className="exercise-header">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="exercise-tags flex flex-wrap items-center gap-2">
             <span className="text-xs font-black text-amber-800 uppercase tracking-wider bg-amber-100 px-2.5 py-1 rounded-full">
               {isMelodic ? '🎹 Tap Melodico (Touch, Tastiera & MIDI)' : '🥁 Rhythm Tap (Esegui il Ritmo)'}
             </span>
@@ -424,7 +444,7 @@ export default function RhythmTapGame({
           <p className="text-xs text-slate-600 mt-0.5">{level.description}</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="exercise-header-actions flex flex-wrap items-center gap-2">
           <div className="text-right">
             <span className="text-xs font-bold text-slate-500">Velocità</span>
             <div className="text-base font-black text-amber-900">{bpm} BPM</div>
@@ -444,29 +464,30 @@ export default function RhythmTapGame({
       </div>
 
       {/* Main Game Stage */}
-      <div className="flex-1 flex flex-col items-center relative py-4 overflow-y-auto">
+      <div className="exercise-body flex-1 flex flex-col items-center relative">
         {gameState === 'ready' && (
-          <div className="text-center max-w-lg p-6 bg-white rounded-3xl shadow-playful border border-amber-100 animate-fade-in my-auto">
-            <div className="w-16 h-16 mx-auto mb-3 bg-amber-100 rounded-full flex items-center justify-center text-3xl shadow-inner">
-              {isMelodic ? '🎹' : '🥁'}
-            </div>
-            <h3 className="text-xl font-black text-slate-800 mb-1">{level.title}</h3>
+          <div className="exercise-card text-center w-full max-w-2xl bg-white rounded-2xl border border-indigo-100 my-auto">
+            <h3 className="exercise-ready-title text-lg font-black text-slate-800 mb-2">{level.title}</h3>
 
             {/* Didactic Explanation Box */}
-            <div className="text-left bg-amber-50/70 p-3.5 rounded-2xl border border-amber-200 mb-4 space-y-2 text-xs">
-              <div>
-                <span className="font-black text-amber-900 block">🎯 Obiettivo dell'Esercizio:</span>
-                <span className="text-slate-700 font-medium">
-                  {level.explanation?.goal || level.description}
-                </span>
+            <details className="exercise-goal text-left bg-amber-50/70 rounded-2xl border border-amber-200 text-xs"
+              open={!compactHeight}>
+              <summary className="font-bold text-amber-900 cursor-pointer">Obiettivo e guida vocale</summary>
+              <div className="space-y-2 mt-2">
+                <div>
+                  <span className="font-black text-amber-900 block">🎯 Obiettivo dell'Esercizio:</span>
+                  <span className="text-slate-700 font-medium">
+                    {level.explanation?.goal || level.description}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-black text-amber-900 block">🗣️ Guida Vocale (Come Contare):</span>
+                  <span className="text-slate-700 font-medium">
+                    {level.explanation?.howToCount || (isMelodic ? "Canta le note con sillabe Kodály (Sol, Mi, La...)" : "Conta a tempo con sillabe Kodály (Ta, Ti-Ti).")}
+                  </span>
+                </div>
               </div>
-              <div>
-                <span className="font-black text-amber-900 block">🗣️ Guida Vocale (Come Contare):</span>
-                <span className="text-slate-700 font-medium">
-                  {level.explanation?.howToCount || (isMelodic ? "Canta le note con sillabe Kodály (Sol, Mi, La...)" : "Conta a tempo con sillabe Kodály (Ta, Ti-Ti).")}
-                </span>
-              </div>
-            </div>
+            </details>
 
             {isMelodic && (
               <div className="flex items-center gap-2 mb-3 bg-amber-100/70 p-1.5 rounded-2xl border border-amber-200">
@@ -524,9 +545,9 @@ export default function RhythmTapGame({
               </div>
             )}
 
-            <div className="text-xs text-slate-600 mb-4 p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-left">
-              <span className="font-bold text-slate-800 block mb-1">🎮 Modalità di esecuzione:</span>
-              <ul className="space-y-1 list-disc list-inside">
+            <details className="exercise-help text-slate-600 bg-slate-50 rounded-xl border border-slate-200 text-left">
+              <summary className="font-bold text-slate-800 cursor-pointer">Come si suona</summary>
+              <ul className="mt-2 space-y-1 list-disc list-inside">
                 {isMelodic && (
                   <li>
                     <strong>🎤 Canto al Microfono:</strong> canta con la tua voce o con il coro dei bambini, il microfono riconosce l'altezza e il tempo in modo adattivo!
@@ -536,7 +557,7 @@ export default function RhythmTapGame({
                 <li><strong>Tastiera Computer:</strong> premi i tasti <kbd className="bg-white border px-1 rounded">A</kbd> <kbd className="bg-white border px-1 rounded">S</kbd> <kbd className="bg-white border px-1 rounded">D</kbd> <kbd className="bg-white border px-1 rounded">F</kbd> o i numeri <kbd className="bg-white border px-1 rounded">1-8</kbd>.</li>
                 <li><strong>Tastiera MIDI:</strong> collega qualsiasi pianoforte o tastiera USB!</li>
               </ul>
-            </div>
+            </details>
 
             <label className="backing-toggle">
               <input type="checkbox" checked={backing} onChange={event => {
@@ -547,7 +568,7 @@ export default function RhythmTapGame({
             </label>
             {sessionError && <p role="alert" className="mb-3 text-sm text-rose-800">{sessionError}</p>}
             {/* Action Buttons: Listen Correct Version + Start Game */}
-            <div className="flex flex-col sm:flex-row items-center gap-3">
+            <div className="exercise-start flex flex-col sm:flex-row items-center gap-3">
               <button
                 onClick={handlePlayTarget}
                 className={`btn-playful flex-1 w-full py-3.5 text-xs font-black rounded-2xl flex items-center justify-center gap-2 border transition-all ${
@@ -578,31 +599,29 @@ export default function RhythmTapGame({
         )}
 
         {(gameState === 'playing' || gameState === 'counting') && (
-          <div className="w-full max-w-3xl flex flex-col items-center my-auto relative">
+          <div className="exercise-live w-full max-w-4xl flex flex-col items-center my-auto relative">
+            {(gameState === 'counting' || recentTapFeedback || combo > 2) && <div className="exercise-signal">
             {/* Countdown badge during count-in: the whole game stage is already
                 visible so pupils can spot the hit zone and the input buttons
                 before the metronome count finishes. */}
             {gameState === 'counting' && (
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center animate-bounce-short">
-                <div className="text-xs font-black text-amber-800 uppercase tracking-widest mb-1.5 whitespace-nowrap px-3 py-1 bg-white/95 rounded-full border border-amber-200 shadow-xs">
-                  {isMelodic && inputMode === 'singing'
-                    ? "🎶 Prendi l'intonazione e preparati..."
-                    : 'Ascolta il conteggio del metronomo...'}
-                </div>
+              <div className="exercise-count">
                 <div className="count-dial" aria-label={countInBeat ? `Conteggio: ${countInBeat}` : 'Preparazione audio'}>
                   {countInBeat || '…'}
                 </div>
-                <div className="mt-2 text-[11px] font-black text-slate-700 bg-white/95 px-3 py-1 rounded-full border border-amber-200 shadow-xs whitespace-nowrap">
-                  👀 Le note arrivano qui: al via suona a ritmo!
+                <div className="text-xs font-bold text-indigo-900">
+                  {isMelodic && inputMode === 'singing'
+                    ? "🎶 Prendi l'intonazione e preparati..."
+                    : 'Ascolta il conteggio del metronomo...'}
                 </div>
               </div>
             )}
 
             {/* Combo & Live Feedback */}
-            <div className="h-16 flex flex-col items-center justify-center mb-3">
+            {gameState === 'playing' && <div className="exercise-feedback">
               {recentTapFeedback && (
                 <div
-                  className={`text-xl font-black px-6 py-2 rounded-2xl shadow-playful animate-bounce-short flex items-center gap-2 ${
+                  className={`text-sm font-bold px-2 py-1 rounded-xl flex items-center gap-2 ${
                     recentTapFeedback.rating === 'perfect'
                       ? 'bg-emerald-100 text-emerald-800 border-2 border-emerald-300'
                       : recentTapFeedback.rating === 'good'
@@ -625,12 +644,13 @@ export default function RhythmTapGame({
                   🔥 Combo: {combo} note consecutive corrette!
                 </div>
               )}
-            </div>
+            </div>}
+            </div>}
 
             {/* Input Mode Toggle & Microphone Vocal Tuner (Melodic Mode) */}
             {isMelodic && (
-              <div className="w-full flex flex-col gap-2 mb-3">
-                <div className="flex items-center justify-between gap-2">
+              <div className="w-full flex flex-col gap-1 mb-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-bold text-indigo-900">
                     {inputMode === 'singing' ? 'Canto · Microfono' : 'Esecuzione · Tasti / MIDI'}
                   </span>
@@ -721,7 +741,8 @@ export default function RhythmTapGame({
             )}
 
             {/* MUSICAL STAFF HIGHWAY - Authentic Staff with Scrolling Notes */}
-            <div className="practice-rail w-full h-60 relative overflow-hidden mb-3 select-none" aria-label="Rigo dell'esercizio">
+            <div ref={bindRail} className="practice-rail w-full relative overflow-hidden mb-1 select-none"
+              style={{ height: railHeight }} aria-label="Rigo dell'esercizio">
               {isMelodic ? (
                 <>
                   {/* Pentagram 5 Staff Lines: [48, 72, 96, 120, 144] */}
@@ -801,14 +822,14 @@ export default function RhythmTapGame({
                 })),
               ].map((beat) => {
                 const targetOffset = 80; // px where target zone is
-                const distancePx = ((beat.timeMs - countInMs - currentTimeMs) / (msPerBeat / 4)) * 48;
-                const leftPos = targetOffset + (reducedMotion ? Math.round(distancePx / 96) * 96 : distancePx);
+                const distancePx = ((beat.timeMs - countInMs - currentTimeMs) / (msPerBeat / 4)) * pixelsPerStep;
+                const leftPos = targetOffset + (reducedMotion ? 0 : distancePx);
 
-                if (leftPos < -60 || leftPos > 760 || (reducedMotion && Math.abs(distancePx) >= 48)) return null;
+                if (leftPos < -45 || leftPos > railWidth + 32 || (reducedMotion && Math.abs(distancePx) >= pixelsPerStep)) return null;
                 if (beat.isRest) return (
                   <svg key={beat.id} className="absolute top-0 overflow-visible pointer-events-none" width="32" height="200"
                     style={{ transform: `translate3d(${leftPos - 16}px, 0, 0)` }} aria-label="Pausa">
-                    <StaffGlyph x={16} y={isMelodic ? staffLines[Math.floor(staffLines.length / 2)] : 116}
+                    <StaffGlyph x={16} y={isMelodic ? staffLines[Math.floor(staffLines.length / 2)] : railHeight / 2}
                       duration={beat.durationSteps} rest color="#475577" />
                   </svg>
                 );
@@ -880,9 +901,10 @@ export default function RhythmTapGame({
                 }
               })}
             </div>
-            <progress className="lesson-progress mb-2" aria-label="Avanzamento esercizio" max={level.totalSteps || 16}
+            <div className="exercise-transport">
+            <progress className="lesson-progress" aria-label="Avanzamento esercizio" max={level.totalSteps || 16}
               value={Math.min(level.totalSteps || 16, Math.max(0, currentTimeMs / (msPerBeat / 4)))} />
-            <button className="mb-3 text-sm font-bold text-indigo-800" onClick={() => {
+            <button className="text-xs font-bold text-indigo-800" onClick={() => {
               sessionRef.current++;
               timelineRef.current = null;
               audioEngine.stopPlayback();
@@ -890,7 +912,8 @@ export default function RhythmTapGame({
               setMicActive(false);
               setLivePitch(null);
               setGameState('ready');
-            }}>Interrompi e torna alla preparazione</button>
+            }}>Interrompi e torna</button>
+            </div>
 
             {/* INTERACTIVE INPUT STAGE: Melodic Touch Keyboard vs Rhythmic Tap */}
             {isMelodic ? (
@@ -911,7 +934,7 @@ export default function RhythmTapGame({
                 )}
 
                 {/* Touch Piano / Orff Chime Bars */}
-                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2.5 w-full">
+                <div className="exercise-pads">
                   {activePitchKeys.map((pKey) => {
                     const data = KODALY_SIGNS_DATA[pKey] || KODALY_SIGNS_DATA.SOL;
                     const isPressed = activePressedPitch === pKey;
@@ -921,14 +944,13 @@ export default function RhythmTapGame({
                         key={pKey}
                         onPointerDown={e => { if (e.button === 0) handlePitchTap(pKey, e.timeStamp); }}
                         onClick={e => { if (e.detail === 0) handlePitchTap(pKey); }}
-                        className={`btn-playful py-4 px-2 rounded-2xl flex flex-col items-center justify-between transition-all transform select-none cursor-pointer border-2 ${
+                        className={`exercise-pitch-pad btn-playful rounded-xl flex flex-col items-center justify-between select-none cursor-pointer border-2 ${
                           isPressed ? 'scale-95 ring-4 ring-amber-400 brightness-110' : 'hover:scale-[1.03]'
                         }`}
                         style={{
                           backgroundColor: data.color,
                           borderColor: '#1E293B',
                           color: data.textColor,
-                          height: '110px',
                         }}
                       >
                         {/* Note Name & Keyboard Key Badge */}
@@ -936,7 +958,7 @@ export default function RhythmTapGame({
                           <span className="text-base font-black drop-shadow-sm">
                             {data.syllable}
                           </span>
-                          <span className="text-[10px] font-black bg-white/90 text-slate-800 px-1 rounded shadow-xs">
+                          <span className="exercise-pad-kbd text-[10px] font-black bg-white/90 text-slate-800 px-1 rounded shadow-xs">
                             {data.keyboardKey}
                           </span>
                         </div>
@@ -947,7 +969,7 @@ export default function RhythmTapGame({
                         </div>
 
                         {/* Scientific Pitch / Description */}
-                        <span className="text-[9px] font-bold opacity-90 truncate max-w-full">
+                        <span className="exercise-pad-pitch text-[9px] font-bold opacity-90 truncate max-w-full">
                           {data.name.split(' ')[0]}
                         </span>
                       </button>
@@ -957,8 +979,7 @@ export default function RhythmTapGame({
               </div>
             ) : (
               /* Rhythmic Big Button + Body Percussion row */
-              <div className="w-full flex flex-col items-center gap-4">
-                <div className="flex flex-wrap items-center justify-center gap-2 w-full max-w-xl">
+              <div className="exercise-pads exercise-pads-rhythm">
                   {[
                     { id: 'feet', icon: '🦶', label: 'Piedi', key: 'Z' },
                     { id: 'thighs', icon: '🦵', label: 'Cosce', key: 'X' },
@@ -970,33 +991,32 @@ export default function RhythmTapGame({
                     { id: 'triangle', icon: '📐', label: 'Triangolo', key: ',' },
                     { id: 'cymbals', icon: '🪙', label: 'Piatti', key: '.' },
                   ]
-                    .filter(item => settingsManager.isInstrumentEnabled(item.id))
+                    .filter(item => settingsManager.isInstrumentEnabled(item.id) &&
+                      (visibleSounds.some(row => row.id === item.id) || (!visibleSounds.length && item.id === 'clap')))
                     .map(item => (
                       <button
                         key={item.id}
                         onClick={() => handlePitchTap(item.id)}
-                        className={`btn-playful min-w-[72px] p-2 bg-white border-2 border-amber-200 rounded-2xl flex flex-col items-center justify-center hover:bg-amber-50 ${
+                        className={`btn-playful px-1 py-0.5 bg-white border border-amber-200 rounded-xl flex flex-col items-center justify-center hover:bg-amber-50 ${
                           activePressedPitch === item.id ? 'ring-4 ring-amber-400 bg-amber-100' : ''
                         }`}
                       >
-                        <span className="text-2xl">{item.icon}</span>
+                        <span className="text-lg">{item.icon}</span>
                         <span className="text-xs font-black text-slate-800">{item.label}</span>
                         <kbd className="text-[9px] bg-slate-100 px-1 rounded text-slate-500 font-bold mt-0.5">
                           [{item.key}]
                         </kbd>
                       </button>
                     ))}
-                </div>
-
                 {/* Giant Spacebar Tap Button */}
                 <button
                   onPointerDown={e => { if (e.button === 0) handleUniversalTap(); }}
                   onClick={e => { if (e.detail === 0) handleUniversalTap(); }}
-                  className="btn-playful w-72 h-20 bg-gradient-to-b from-emerald-400 to-emerald-600 active:from-emerald-600 active:to-emerald-700 text-white rounded-3xl shadow-playful flex flex-col items-center justify-center text-lg font-black gap-0.5 cursor-pointer select-none"
+                  className="exercise-tap btn-playful bg-emerald-700 hover:bg-emerald-800 text-white flex flex-col items-center justify-center font-bold cursor-pointer select-none"
                 >
                   <span>BATTI IL TEMPO!</span>
                   <span className="text-[11px] font-semibold opacity-90">
-                    (Barra Spaziatrice o Clic)
+                    Barra spaziatrice
                   </span>
                 </button>
               </div>

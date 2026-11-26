@@ -1,3 +1,11 @@
+## RitmoLab 1.2.1
+
+- Interfaccia riadattata da 540×420 a 1920×1080 e alle tre dimensioni del testo: barre dei comandi che vanno a capo, strumenti secondari raccolti, elenco dei livelli per aree e finestre di dialogo interamente raggiungibili.
+- La partitura si divide in pagine di battute: niente barra di scorrimento orizzontale, cambio pagina con frecce o menu e pagina che segue automaticamente la musica. Le note a cavallo di pagina conservano legatura e durata.
+- Il doppio rigo mostra entrambe le voci quando c’è spazio e una sola voce, selezionabile, quando la finestra è bassa. La verifica delle battute si apre in una finestra dedicata.
+- Gli esercizi compattano rigo e tasti in base all’altezza disponibile; caratteri, righi e comandi crescono proporzionalmente alla dimensione del testo.
+- Controlli automatici per il layout da 320 a 1920 px, il cambio pagina, il doppio rigo, i dettati e le finestre di dialogo.
+
 ## RitmoLab 1.2.0
 
 - 39 campioni inclusi nell’app: xilofono, glockenspiel, flauto dolce, pianoforte, basso, percussioni e metronomo. I suoni funzionano offline.

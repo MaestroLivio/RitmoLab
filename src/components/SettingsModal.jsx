@@ -44,8 +44,8 @@ export default function SettingsModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/45 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl p-6 max-w-2xl w-full shadow-2xl border-2 border-amber-200 overflow-hidden flex flex-col max-h-[92vh] animate-fade-in">
+    <div className="studio-overlay fixed inset-0 bg-black/45 backdrop-blur-sm z-50">
+      <div className="studio-dialog settings-dialog bg-white rounded-3xl max-w-2xl w-full shadow-2xl border-2 border-amber-200">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b-2 border-amber-100">
           <div className="flex items-center gap-2.5">
@@ -61,6 +61,7 @@ export default function SettingsModal({ isOpen, onClose }) {
           </div>
           <button
             onClick={onClose}
+            aria-label="Chiudi impostazioni"
             className="p-2 rounded-2xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -68,7 +69,7 @@ export default function SettingsModal({ isOpen, onClose }) {
         </div>
 
         {/* Settings Body */}
-        <div className="flex-1 overflow-y-auto py-4 space-y-5 pr-1">
+        <div className="py-4 space-y-5">
           {/* 1. Grandezza dei Caratteri (Font Size Scaling) */}
           <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200">
             <div className="flex items-center gap-2 mb-2">
@@ -218,11 +219,8 @@ export default function SettingsModal({ isOpen, onClose }) {
           </div>
 
           {/* 6. Abilitazione Strumenti e Parti del Corpo (Body Percussion) */}
-          <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-base">🥁</span>
-              <h4 className="text-sm font-black text-slate-800">Strumenti e Parti del Corpo Abilitati</h4>
-            </div>
+          <details className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200">
+            <summary className="text-sm font-black text-slate-800 cursor-pointer">Strumenti e parti del corpo</summary>
             <p className="text-xs text-slate-600 mb-3">
               Abilita o disabilita specifici strumenti o azioni di Body Percussion per adattare gli esercizi e l'editor alle esigenze della classe.
             </p>
@@ -231,7 +229,7 @@ export default function SettingsModal({ isOpen, onClose }) {
               <span className="text-[11px] font-black text-amber-900 uppercase tracking-wider block mb-1.5">
                 🖐️ Body Percussion (Parti del Corpo):
               </span>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <div className="settings-instrument-grid">
                 {[
                   { id: 'clap', label: 'Mani', icon: '👏' },
                   { id: 'feet', label: 'Piedi', icon: '🦶' },
@@ -270,7 +268,7 @@ export default function SettingsModal({ isOpen, onClose }) {
               <span className="text-[11px] font-black text-amber-900 uppercase tracking-wider block mb-1.5">
                 🎼 Strumentario Orff & Melodici:
               </span>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="settings-instrument-grid">
                 {[
                   { id: 'claves', label: 'Legnetti (Claves)', icon: '🥢' },
                   { id: 'tambourine', label: 'Tamburello', icon: '🪘' },
@@ -307,14 +305,11 @@ export default function SettingsModal({ isOpen, onClose }) {
                 })}
               </div>
             </div>
-          </div>
+          </details>
 
           {/* 7. Connessione MIDI USB & Tastiera Computer */}
-          <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200">
-            <div className="flex items-center gap-2 mb-2">
-              <Keyboard className="w-4 h-4 text-sky-700" />
-              <h4 className="text-sm font-black text-slate-800">Tastiera MIDI USB & Computer</h4>
-            </div>
+          <details className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200">
+            <summary className="text-sm font-black text-slate-800 mb-2 cursor-pointer">Tastiera MIDI USB e computer</summary>
 
             {/* MIDI Status Box */}
             <div className="p-3 bg-white rounded-xl border border-amber-200 mb-3 flex items-center justify-between">
@@ -343,7 +338,7 @@ export default function SettingsModal({ isOpen, onClose }) {
             {/* PC Keyboard Shortcut Preview */}
             <div className="text-[11px] text-slate-600">
               <span className="font-bold text-slate-800">Mappatura Tasti Computer (Modalità Melodica):</span>
-              <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 mt-1.5 text-center">
+              <div className="settings-key-grid mt-1.5 text-center">
                 {Object.entries(KODALY_SIGNS_DATA).map(([key, data]) => (
                   <div key={key} className="p-1 rounded-lg border border-slate-200 bg-white shadow-2xs">
                     <div className="font-black text-xs" style={{ color: data.color }}>
@@ -356,7 +351,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                 ))}
               </div>
             </div>
-          </div>
+          </details>
         </div>
 
         {/* Footer */}

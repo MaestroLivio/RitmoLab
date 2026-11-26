@@ -72,7 +72,7 @@ export default function UpdateModal({ onClose }) {
   // Stato iniziale di verifica: mostra un piccolo spinner.
   if (phase === 'checking') {
     return (
-      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      <div className="studio-overlay fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]">
         <div className="bg-white rounded-3xl p-8 shadow-2xl border-2 border-amber-200 flex items-center gap-3 animate-fade-in">
           <RefreshCw className="w-5 h-5 text-amber-500 animate-spin" />
           <span className="text-sm font-bold text-slate-700">Verifica aggiornamenti…</span>
@@ -82,8 +82,8 @@ export default function UpdateModal({ onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/45 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border-2 border-amber-200 animate-fade-in">
+    <div className="studio-overlay fixed inset-0 bg-black/45 backdrop-blur-sm z-[60]">
+      <div className="studio-dialog bg-white rounded-3xl p-4 max-w-md w-full shadow-2xl border-2 border-amber-200">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b-2 border-amber-100">
           <div className="flex items-center gap-2.5">

@@ -83,9 +83,9 @@ export default function DictationGame({
   };
 
   return (
-    <div className="studio-panel flex flex-col h-full p-5 overflow-auto select-none">
+    <div className="studio-panel exercise-panel flex flex-col select-none">
       {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b-2 border-amber-100">
+      <div className="exercise-header">
         <div>
           <span className="text-xs font-black text-purple-800 uppercase tracking-wider bg-purple-100 px-2.5 py-1 rounded-full">
             Dettato e Ascolto Musicale
@@ -105,7 +105,7 @@ export default function DictationGame({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center max-w-xl mx-auto w-full py-4">
+      <div className="exercise-body flex-1 flex flex-col items-center justify-center max-w-3xl mx-auto w-full">
         {/* Didactic Explanation Box */}
         <div className="w-full bg-white/90 p-4 rounded-2xl border border-purple-200 shadow-playful-sm mb-5 text-xs space-y-1.5">
           <div>
@@ -145,7 +145,7 @@ export default function DictationGame({
         </div>
 
         {/* Multiple Choice Options */}
-        <div className="w-full space-y-3 mb-6">
+        <div className="dictation-options w-full mb-4">
           {level.options?.map((opt) => {
             const isSelected = selectedOptionId === opt.id;
             let borderStyle = 'border-amber-200 bg-white hover:border-purple-300';

@@ -21,7 +21,8 @@ export default function LevelSelector({
   onSelectLevel,
   onClose = null,
 }) {
-  const [activeTab, setActiveTab] = useState('rhythm'); // 'rhythm' | 'melody'
+  const [activeTab, setActiveTab] = useState(() => currentLevelId?.startsWith('M') ? 'melody' : 'rhythm');
+  const [selectedArea, setSelectedArea] = useState(null);
   const [showTeacherModal, setShowTeacherModal] = useState(false);
   const [importJsonText, setImportJsonText] = useState('');
 
@@ -47,6 +48,9 @@ export default function LevelSelector({
     });
     return Array.from(map.values());
   }, [currentList]);
+  const activeArea = groupedAreas.find(area => area.areaNumber === selectedArea)
+    || groupedAreas.find(area => area.levels.some(level => level.id === currentLevelId))
+    || groupedAreas[0];
 
   const handleExport = () => {
     const jsonStr = levelManager.exportDataAsJSON();
@@ -72,9 +76,9 @@ export default function LevelSelector({
   };
 
   return (
-    <div className="studio-panel flex flex-col h-full overflow-hidden select-none">
+    <div className="studio-panel level-panel flex flex-col select-none">
       {/* Top Header & Global Stats */}
-      <div className="px-6 py-5 bg-white border-b-2 border-amber-100 flex flex-wrap items-center justify-between gap-4">
+      <div className="level-panel-section bg-white border-b border-amber-100 flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-black text-slate-800 tracking-tight">Percorso Didattico</h1>
@@ -88,7 +92,7 @@ export default function LevelSelector({
         </div>
 
         {/* Stats Pill */}
-        <div className="flex items-center gap-4 bg-amber-50 px-4 py-2 rounded-2xl border border-amber-200">
+        <div className="flex flex-wrap items-center gap-2 bg-amber-50 px-3 py-2 rounded-xl border border-amber-200">
           <div className="flex items-center gap-1.5">
             <Trophy className="w-4 h-4 text-amber-500" />
             <span className="text-xs font-bold text-slate-600">Completati:</span>
@@ -115,9 +119,10 @@ export default function LevelSelector({
       </div>
 
       {/* Tabs: Ritmo (48) vs Melodia (40) */}
-      <div className="flex items-center px-6 pt-3 bg-white/70 border-b border-amber-200 gap-3">
+      <div className="level-panel-section flex flex-wrap items-center bg-white/70 border-b border-amber-200 gap-1">
         <button
-          onClick={() => setActiveTab('rhythm')}
+          onClick={() => { setActiveTab('rhythm'); setSelectedArea(null); }}
+          aria-pressed={activeTab === 'rhythm'}
           className={`pb-3 px-4 font-black text-sm flex items-center gap-2 border-b-4 transition-all ${
             activeTab === 'rhythm'
               ? 'border-sky-500 text-sky-900'
@@ -130,7 +135,8 @@ export default function LevelSelector({
         </button>
 
         <button
-          onClick={() => setActiveTab('melody')}
+          onClick={() => { setActiveTab('melody'); setSelectedArea(null); }}
+          aria-pressed={activeTab === 'melody'}
           className={`pb-3 px-4 font-black text-sm flex items-center gap-2 border-b-4 transition-all ${
             activeTab === 'melody'
               ? 'border-purple-500 text-purple-900'
@@ -144,8 +150,17 @@ export default function LevelSelector({
       </div>
 
       {/* Level List / Grouped Areas */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {groupedAreas.map((group) => (
+      <div className="level-panel-section level-list flex-1">
+        <label className="level-area-picker">
+          <span>Area didattica</span>
+          <select value={activeArea?.areaNumber ?? ''} onChange={event => setSelectedArea(
+            groupedAreas.find(area => String(area.areaNumber) === event.target.value)?.areaNumber)}>
+            {groupedAreas.map(area => <option key={area.areaNumber} value={area.areaNumber}>
+              {area.areaNumber}. {area.areaTitle}
+            </option>)}
+          </select>
+        </label>
+        {(activeArea ? [activeArea] : []).map((group) => (
           <div key={group.areaNumber} className="space-y-3">
             {/* Area Header */}
             <div className="flex items-center gap-2">
@@ -156,23 +171,25 @@ export default function LevelSelector({
             </div>
 
             {/* Grid of Level Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="level-card-grid">
               {group.levels.map((lvl) => {
                 const status = levelManager.getLevelStatus(lvl.id);
                 const isCurrent = currentLevelId === lvl.id;
                 const isUnlocked = status.unlocked;
 
                 return (
-                  <div
+                  <button type="button"
                     key={lvl.id}
                     onClick={() => {
                       if (isUnlocked) onSelectLevel(lvl.id);
                     }}
-                    className={`card-playful p-3.5 flex flex-col justify-between transition-all ${
+                    disabled={!isUnlocked}
+                    aria-current={isCurrent ? 'step' : undefined}
+                    className={`card-playful level-card text-left flex flex-col justify-between ${
                       isCurrent
-                        ? 'ring-4 ring-amber-400 ring-offset-2 scale-[1.02] border-amber-400 bg-amber-50/50'
+                         ? 'ring-2 ring-amber-400 border-amber-400 bg-amber-50/50'
                         : isUnlocked
-                        ? 'hover:scale-[1.02] cursor-pointer hover:border-amber-300'
+                         ? 'cursor-pointer hover:border-amber-300'
                         : 'opacity-55 cursor-not-allowed bg-slate-50'
                     }`}
                   >
@@ -208,8 +225,8 @@ export default function LevelSelector({
                       </div>
 
                       {/* Title & Description */}
-                      <h4 className="text-sm font-black text-slate-800 line-clamp-1">{lvl.title}</h4>
-                      <p className="text-[11px] text-slate-500 line-clamp-2 mt-1 leading-snug">
+                      <h4 className="text-sm font-black text-slate-800">{lvl.title}</h4>
+                      <p className="text-xs text-slate-600 mt-1 leading-snug">
                         {lvl.description}
                       </p>
                     </div>
@@ -233,7 +250,7 @@ export default function LevelSelector({
                         </span>
                       )}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -243,8 +260,8 @@ export default function LevelSelector({
 
       {/* Teacher / Administration Modal */}
       {showTeacherModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border-2 border-amber-200">
+        <div className="studio-overlay fixed inset-0 bg-black/40 backdrop-blur-sm z-50">
+          <div className="studio-dialog bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border-2 border-amber-200">
             <h3 className="text-lg font-black text-slate-800 mb-2">Strumenti Docente & Salvataggio</h3>
             <p className="text-xs text-slate-600 mb-4">
               Esporta o importa i progressi della classe, oppure sblocca tutti i livelli per testarli liberamente.
