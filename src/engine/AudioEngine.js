@@ -125,9 +125,9 @@ export class AudioEngine {
     this.#sample(ALIASES[key] || (DRUMS.includes(key) ? key : 'clap'), time, { volume });
   }
 
-  playNote(pitch, duration = 0.5, time = null, accidental = 0) {
+  playNote(pitch, duration = 0.5, time = null, accidental = 0, volume = 0.66) {
     const instrument = ROOTS[this.melodicInstrument] ? this.melodicInstrument : 'xylophone';
-    this.#midi(instrument, toMidi(pitch, accidental), duration, time || null, 0.66);
+    this.#midi(instrument, toMidi(pitch, accidental), duration, time ?? null, volume);
   }
 
   playReferencePitch(pitch = 'DO', duration = 2.5, time = null, accidental = 0) {
@@ -178,6 +178,8 @@ export class AudioEngine {
       }
     }
     const harmony = score.backing === 'melody' ? backingHarmony(score.melody || [], barSteps, total) : [];
+    const changes = new Map((score.chords || []).map(chord => [chord.step, chord.midi]));
+    let activeChord = null;
     let next = -countSteps;
 
     const schedule = () => {
@@ -195,16 +197,21 @@ export class AudioEngine {
         }
         if (step < 0) {
           if (step === -countSteps && score.reference) {
-            this.playReferencePitch(score.reference.pitch, countSteps * stepSeconds * 0.72, time,
+            this.playReferencePitch(score.reference.pitch, countSteps * stepSeconds * 0.52, time,
               score.reference.accidental || 0);
           }
           continue;
         }
-        if (score.backing === 'rhythm') {
+        if (step === 0) activeChord = null;
+        if (changes.has(step)) activeChord = changes.get(step);
+        if (score.backing && changes.size && (changes.has(step) || barStep % pulseSteps === 0)) {
+          const duration = pulseSteps * stepSeconds * 0.75;
+          activeChord?.forEach(pitch => this.#midi('piano', pitch, duration, time, 0.13));
+        } else if (score.backing === 'rhythm' && !changes.size) {
           const pulse = Math.floor(barStep / pulseSteps);
           if (barStep % pulseSteps === 0) this.playSoundByName(pulse % 2 ? 'thighs' : 'kick', time, 0.29);
           if (barStep % pulseSteps === pulseSteps / 2) this.playSoundByName('hat', time, 0.21);
-        } else if (score.backing === 'melody' && barStep % pulseSteps === 0) {
+        } else if (score.backing === 'melody' && !changes.size && barStep % pulseSteps === 0) {
           const chord = harmony[Math.floor(step / barSteps)];
           if (chord) {
             const duration = pulseSteps * stepSeconds * 0.82;
@@ -213,8 +220,13 @@ export class AudioEngine {
           }
         }
         for (const note of notesAt.get(step) || []) {
-          if (note.pitch) this.playNote(note.pitch, (note.duration || 4) * stepSeconds, time, note.accidental || 0);
-          else if (note.sound) this.playSoundByName(note.sound, time);
+          const velocity = note.velocity == null ? null : Math.max(1, Math.min(127, note.velocity)) / 127;
+          const duration = (note.duration || 4) * stepSeconds;
+          if (note.pitch && note.instrument && ROOTS[note.instrument]) {
+            this.#midi(note.instrument, toMidi(note.pitch, note.accidental || 0), duration, time, velocity ?? 0.66);
+          } else if (note.pitch) {
+            this.playNote(note.pitch, duration, time, note.accidental || 0, velocity ?? 0.66);
+          } else if (note.sound) this.playSoundByName(note.sound, time, velocity ?? 0.58);
         }
       }
       if (score.loop || next < total) this.timer = setTimeout(schedule, 20);

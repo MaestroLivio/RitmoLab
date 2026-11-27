@@ -50,3 +50,21 @@ test('rest-only bars stay silent and harmony follows the melody', () => {
   assert.ok(harmony[0].some(pitch => pitch % 12 === 5));
   assert.equal(harmony[1], null);
 });
+test('first note accepts early and late attacks while rejecting the preceding count-in', () => {
+  const evaluator = new RhythmEvaluator({ tolerancePerfectMs: 80, toleranceGoodMs: 160 });
+  evaluator.loadScore([{ step: 0, pitch: 'DO' }, { step: 4, pitch: 'DO' }], 60, 2);
+  const doPitch = { midi: 60, cents: 0, isConfident: true };
+  evaluator.start(1000);
+  assert.equal(evaluator.registerTap(2839, { midi: 60 }), null);
+  assert.equal(evaluator.registerTap(2880, { midi: 60 }).diffMs, -120);
+  evaluator.start(1000);
+  assert.equal(evaluator.registerTap(3120, { midi: 60 }).diffMs, 120);
+  evaluator.start(1000);
+  assert.equal(evaluator.registerSingingDetection(2800, doPitch), null);
+  assert.equal(evaluator.registerSingingDetection(2900, doPitch), null);
+  evaluator.registerSingingDetection(2901, { isSilent: true });
+  assert.equal(evaluator.registerSingingDetection(2920, doPitch).diffMs, -80);
+  assert.equal(evaluator.registerSingingDetection(3980, doPitch), null);
+  evaluator.registerSingingDetection(3990, { isSilent: true });
+  assert.equal(evaluator.registerSingingDetection(4020, doPitch).diffMs, 20);
+});

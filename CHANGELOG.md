@@ -14,3 +14,11 @@
 - Il dettato ora si può interrompere e riascoltare; le risposte sono selezionabili da tastiera.
 
 Installer disponibili: **Windows x64** e **macOS Apple Silicon (arm64)**. Per gli avvisi di sicurezza al primo avvio, vedi le [istruzioni](https://github.com/MaestroLivio/RitmoLab/blob/main/installers/LEGGIMI.txt).
+## RitmoLab 1.3.0
+
+- Nuova impostazione didattica progressiva in 88 livelli, con repertorio laico e attività in Do maggiore nell’estensione Do4–Do5.
+- Lezioni arricchite con repertorio, partiture, indicazioni su dinamica e guida vocale; modalità per uso individuale e di classe.
+- Esercizi ritmici, dettato, valutazione e accompagnamento migliorati; editor e impaginazione della partitura più affidabili.
+- Interfaccia adattata a telefoni, tablet e schermi desktop; PWA installabile e funzionamento offline.
+- App Android con WebView sicura e risorse audio incluse per l’uso offline; supporto all’installazione su Android e ChromeOS.
+- Distribuzione desktop aggiornata per macOS Apple Silicon (arm64) e Windows x64.

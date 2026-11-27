@@ -1,12 +1,14 @@
 {
   "name": "ritmolab",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "RitmoLab - Laboratorio Desktop per l'Educazione Musicale nella Scuola Primaria",
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "android:prepare": "npm run build && node scripts/android/prepare.mjs",
+    "android:build": "node scripts/android/build.mjs",
     "test": "node src/tests/curriculum-evaluator.test.js && node --test src/tests/transport.test.js src/tests/score-layout.test.js",
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"cross-env ELECTRON_DEV=true wait-on tcp:5173 && electron electron/main.cjs\"",

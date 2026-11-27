@@ -36,8 +36,9 @@ import { FIGURE_DURATIONS, FIGURE_INFO } from '../data/curriculum';
 import { settingsManager } from '../engine/SettingsManager';
 import ProjectManagerModal from './ProjectManagerModal';
 import { ScoreStaff, ScoreNotes } from './ScoreEngraving';
-import { getMeter } from '../engine/Transport';
+import { getMeter, toMidi } from '../engine/Transport';
 import { scorePage } from '../engine/ScoreLayout';
+import RepertoireCard, { LessonAnnotations } from './RepertoireCard';
 
 const SECOND_VOICE = PENTAGRAM_ROWS.map(row => ({ ...row, id: `v2:${row.id}`, voice: 2 }));
 const DUAL_ROWS = [...PENTAGRAM_ROWS, ...SECOND_VOICE];
@@ -204,6 +205,11 @@ export default function GridEditor({
     if (staffType === 'pentagram') return PENTAGRAM_ROWS;
 
     // Rhythmic / Percussion in curriculum
+    if (levelConfig?.rhythmMode) {
+      const rows = levelConfig.rhythmMode === 'orff' ? ORFF_ROWS : PERCUSSION_ROWS;
+      const required = new Set(levelConfig.targetNotes.map(note => note.sound));
+      return rows.filter(row => required.has(row.sound) || settingsManager.isInstrumentEnabled(row.id));
+    }
     if (levelConfig?.allowedSounds && levelConfig.allowedSounds.length > 0) {
       const allowed = levelConfig.allowedSounds;
       const combined = ALL_RHYTHMIC_ROWS;
@@ -287,6 +293,8 @@ export default function GridEditor({
         timeSignature,
         playMetronome: metronomeEnabled,
         loop: isLooping,
+        chords: levelConfig?.chords,
+        backing: levelConfig?.song ? levelConfig.section : null,
         tracks: [
           {
             defaultSound: 'clap',
@@ -299,6 +307,7 @@ export default function GridEditor({
                 pitch: n.pitch || row?.pitch,
                 sound: n.sound || row?.sound || 'clap',
                 accidental: n.accidental || 0,
+                velocity: n.velocity,
               };
             })
           }
@@ -341,10 +350,14 @@ export default function GridEditor({
       timeSignature: levelConfig.timeSignature || timeSignature,
       playMetronome: true,
       loop: isLooping,
+      chords: levelConfig.chords,
+      backing: levelConfig.song ? levelConfig.section : null,
       tracks: [
         {
           notes: levelConfig.targetNotes || [],
         },
+        ...(levelConfig.guide?.length ? [{ notes: levelConfig.guide.map(note => ({
+          ...note, instrument: 'flute', velocity: 34 })) }] : []),
         ...(levelConfig.targetNotesTrack2
           ? [{ notes: levelConfig.targetNotesTrack2 }]
           : [])
@@ -439,8 +452,12 @@ export default function GridEditor({
     insertAt(snap);
   };
 
-  const toolDuration = (figure = selectedFigure) =>
-    (FIGURE_DURATIONS[figure] || 4) * (dotted && isSandbox && !figure.includes('sixteenth') ? 1.5 : 1);
+  const canUseDot = isSandbox || levelConfig?.targetNotes?.some(note => [3, 6, 12, 24].includes(note.duration));
+  const toolDuration = (figure = selectedFigure, dot = dotted) =>
+    (FIGURE_DURATIONS[figure] || 4) * (dot && canUseDot && !figure.includes('sixteenth') ? 1.5 : 1);
+  const pitchAllowed = ({ pitch, rowId }) => !levelConfig?.song || !pitch ||
+    (toMidi(pitch) >= 60 && toMidi(pitch) <= 72 &&
+      (!levelConfig.allowedPitches || levelConfig.allowedPitches.includes(rowId.replace(/^v2:/, ''))));
 
   const insertAt = (snap) => {
     if (isReadOnly || !snap) return;
@@ -454,6 +471,10 @@ export default function GridEditor({
     // Add note at clicked position
     const duration = toolDuration();
     const isRest = selectedFigure.startsWith('rest_');
+    if (!isRest && !pitchAllowed(snap)) {
+      setEditMessage('Scegli una delle note previste dal livello, nell’ottava Do–Do.');
+      return;
+    }
     if (snap.step + duration > totalSteps) {
       setEditMessage('La figura supera la fine della partitura. Aggiungi una battuta o scegli una durata più breve.');
       return;
@@ -508,6 +529,7 @@ export default function GridEditor({
             step: ghostSnap.step,
             rowId: ghostSnap.rowId,
             pitch: ghostSnap.pitch,
+            midi: ghostSnap.pitch ? toMidi(ghostSnap.pitch, n.accidental) : n.midi,
             sound: ghostSnap.sound,
           };
         }
@@ -542,7 +564,8 @@ export default function GridEditor({
     setSelectedNoteId(null);
   };
 
-  const canMove = (note, spot) => spot.step + (note.duration || 4) <= totalSteps &&
+  const canMove = (note, spot) => (note.isRest || pitchAllowed(spot)) &&
+    spot.step + (note.duration || 4) <= totalSteps &&
     !notes.some(other => other.id !== note.id && other.step === spot.step && other.rowId === spot.rowId);
 
   const handleScoreKeys = (e) => {
@@ -572,7 +595,8 @@ export default function GridEditor({
       if (moveNote) {
         const spot = { step: nextStep, rowId: target.id, pitch: target.pitch || null, sound: target.sound || null };
         if (!canMove(note, spot)) return;
-        updateNotes(notes.map(item => item.id === note.id ? { ...item, ...spot } : item));
+        updateNotes(notes.map(item => item.id === note.id ? { ...item, ...spot,
+          midi: spot.pitch ? toMidi(spot.pitch, item.accidental) : item.midi } : item));
       } else setSelectedNoteId(notes.find(item => item.step === nextStep && item.rowId === target.id)?.id ?? null);
       setCursor({ row: nextRow, step: nextStep });
       setPageAnchor(nextStep);
@@ -585,7 +609,7 @@ export default function GridEditor({
     setSelectedFigure(figure);
     const note = notes.find(item => item.id === selectedNoteId);
     if (!note || isReadOnly) return;
-    const duration = (FIGURE_DURATIONS[figure] || 4) * (dot && isSandbox && !figure.includes('sixteenth') ? 1.5 : 1);
+    const duration = toolDuration(figure, dot);
     if (note.step + duration > totalSteps) {
       setEditMessage('La durata scelta supera la fine della partitura.');
       return;
@@ -690,6 +714,7 @@ export default function GridEditor({
       onPointerCancel={() => { setDraggedNote(null); setGhostSnap(null); }}
     >
       <span className="score-font-probe" ref={fontProbeRef} aria-hidden="true" />
+      {levelConfig?.song && <RepertoireCard level={levelConfig} showScore={false} />}
       {/* ----------------- DIDACTIC EXPLANATION CARD (For Curriculum levels) ----------------- */}
       {showDidacticCard && !isSandbox && levelConfig && (
         <div className="px-5 pt-3">
@@ -987,7 +1012,7 @@ export default function GridEditor({
                 .map(([key, info]) => <option key={key} value={key}>{info.symbol} {info.label}</option>)}
             </select>
           </label>
-          {isSandbox && (
+          {canUseDot && (
             <button type="button" className="editor-icon" aria-pressed={dotted}
               disabled={selectedFigure.includes('sixteenth')} onClick={() => {
                 setDotted(!dotted);
@@ -1076,6 +1101,7 @@ export default function GridEditor({
           <div className="score-timeline-label">
             {isMelodic ? 'Note' : 'Tracce'}
           </div>
+          {levelConfig?.song && <div className="lesson-annotation-spacer" aria-hidden="true" />}
 
           <div>
             {activeRows.map((row) => (
@@ -1126,6 +1152,8 @@ export default function GridEditor({
             ))}
           </div>
 
+          {levelConfig?.song && <LessonAnnotations chords={levelConfig.chords} dynamics={levelConfig.dynamics}
+            start={pageStart} steps={pageSteps} stepWidth={stepWidth} indent={staffIndent} />}
           {/* The Staff Background & Lines */}
           <div
             ref={staffAreaRef}
@@ -1240,6 +1268,8 @@ export default function GridEditor({
               </div>
             )}
           </div>
+          {levelConfig?.song && <LessonAnnotations text lyrics={isMelodic ? notes : levelConfig.guide}
+            start={pageStart} steps={pageSteps} stepWidth={stepWidth} indent={staffIndent} />}
         </div>
       </div>
 

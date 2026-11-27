@@ -1384,6 +1384,7 @@ function generateMelodicCurriculum() {
   return levels;
 }
 
-export const RHYTHMIC_LEVELS = generateRhythmicCurriculum();
-export const MELODIC_LEVELS = generateMelodicCurriculum();
+export const RHYTHMIC_LEVELS = generateRhythmicCurriculum().map(repertoireLesson);
+export const MELODIC_LEVELS = generateMelodicCurriculum().map(repertoireLesson);
 export const ALL_LEVELS = [...RHYTHMIC_LEVELS, ...MELODIC_LEVELS];
+import { repertoireLesson } from './repertoireLessons.js';

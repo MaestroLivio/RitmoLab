@@ -68,6 +68,9 @@ export class RhythmEvaluator {
   start(startTimeMs = performance.now()) {
     this.startTime = startTimeMs;
     this.isRunning = true;
+    this.sungPitch = null;
+    this.sungOnset = null;
+    this.sungMatched = false;
     this.userTaps = [];
     // Reset all beats
     this.expectedBeats.forEach(b => {
@@ -79,13 +82,19 @@ export class RhythmEvaluator {
     });
   }
 
+  isInputOpen(timeMs) {
+    const first = this.expectedBeats[0];
+    return this.isRunning && first != null
+      && timeMs - this.startTime >= first.timeMs - this.toleranceGoodMs;
+  }
+
   /**
    * Records a user tap (spacebar, touch/click on specific pitch, computer keyboard, or MIDI)
    * @param {number} tapTimeMs - Timestamp in ms
    * @param {string|null} playedPitch - Optional pitch played (e.g. 'DO', 'RE', 'MI', 'SOL', 'LA')
    */
   registerTap(tapTimeMs = performance.now(), playedPitch = null) {
-    if (!this.isRunning) return null;
+    if (!this.isInputOpen(tapTimeMs)) return null;
 
     const elapsedMs = tapTimeMs - this.startTime;
 
@@ -94,7 +103,7 @@ export class RhythmEvaluator {
     let minDiff = Infinity;
 
     for (const beat of this.expectedBeats) {
-      if (!beat.matched) {
+      if (!beat.matched && beat.rating !== 'missed') {
         const diff = elapsedMs - beat.timeMs; // positive if late, negative if early
         if (Math.abs(diff) < Math.abs(minDiff)) {
           minDiff = diff;
@@ -159,38 +168,48 @@ export class RhythmEvaluator {
    * Specifically tailored for untrained children's choir (duration window, octave invariance, cent tolerance).
    */
   registerSingingDetection(currentTimeMs = performance.now(), detectedPitch = null) {
-    if (!this.isRunning || !detectedPitch || detectedPitch.isSilent || !detectedPitch.isConfident) {
+    if (!this.isRunning) return null;
+    if (!detectedPitch || detectedPitch.isSilent) {
+      this.sungPitch = null;
       return null;
     }
+    if (!detectedPitch.isConfident) return null;
 
     const elapsedMs = currentTimeMs - this.startTime;
+    const sung = detectedPitch.midi ?? toMidi(detectedPitch.scientific || detectedPitch.solfegeKey);
+    if (sung == null) return null;
+    const pitchClass = ((Math.round(sung) % 12) + 12) % 12;
+    if (pitchClass !== this.sungPitch) {
+      this.sungPitch = pitchClass;
+      this.sungOnset = elapsedMs;
+      this.sungMatched = false;
+    }
+    if (this.sungMatched || !this.isInputOpen(currentTimeMs)) return null;
 
     // Find candidate beats active in their window (including sustained duration + tolerance)
     const candidateBeats = this.expectedBeats.filter(b => {
-      if (!b.pitch || b.matched) return false;
+      if (!b.pitch || b.matched || b.rating === 'missed') return false;
       const noteDur = b.durationMs || ((b.durationSteps || 4) * (this.msPer16th || 150));
-      const windowStart = b.timeMs;
+      const windowStart = b.timeMs - this.toleranceGoodMs;
       const windowEnd = b.timeMs + noteDur + this.toleranceGoodMs;
-      return elapsedMs >= windowStart && elapsedMs <= windowEnd;
+      return this.sungOnset >= windowStart && elapsedMs <= windowEnd;
     });
 
     if (candidateBeats.length === 0) return null;
 
     // Sort: prefer unmatched beats first, then closest in time
     candidateBeats.sort((a, b) => {
-      if (!a.matched && b.matched) return -1;
-      if (a.matched && !b.matched) return 1;
-      return Math.abs(elapsedMs - a.timeMs) - Math.abs(elapsedMs - b.timeMs);
+      return Math.abs(this.sungOnset - a.timeMs) - Math.abs(this.sungOnset - b.timeMs);
     });
 
-    const sung = detectedPitch.midi ?? toMidi(detectedPitch.scientific || detectedPitch.solfegeKey);
     const beat = candidateBeats.find(item => {
       const expected = toMidi(item.pitch, item.accidental);
-      return sung != null && expected != null && (expected - sung) % 12 === 0;
+      return expected != null && expected % 12 === pitchClass;
     });
 
     if (beat) {
-      const diffMs = elapsedMs - beat.timeMs;
+      const diffMs = this.sungOnset - beat.timeMs;
+      this.sungMatched = true;
       beat.matched = true;
       beat.userTapTime = elapsedMs;
       beat.diffMs = diffMs;

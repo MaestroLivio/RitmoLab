@@ -44,6 +44,7 @@ export const PERCUSSION_ROWS = [
 ];
 
 export const ORFF_ROWS = [
+  { id: 'kick', sound: 'kick', label: 'Tamburo', icon: '🥁', color: '#8B9FE8' },
   { id: 'claves', sound: 'claves', label: 'Legnetti', icon: '🥢', color: '#D97706' },
   { id: 'tambourine', sound: 'tambourine', label: 'Tamburello', icon: '🪘', color: '#F472B6' },
   { id: 'triangle', sound: 'triangle', label: 'Triangolo', icon: '📐', color: '#FDE047' },

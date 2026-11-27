@@ -8,6 +8,11 @@ dist/
 .build/
 .vite/
 *.local
+android/.gradle/
+android/build/
+android/local.properties
+android/app/build/
+android/app/src/main/assets/
 
 # Installer (i binari si distribuiscono tramite le Release GitHub,
 # non dentro il repository: si rigenerano con npm run electron:build)
@@ -18,6 +23,7 @@ installers/**/*.deb
 installers/**/*.AppImage
 installers/**/*.blockmap
 installers/**/*.zip
+installers/**/*.apk
 
 # Sistema operativo
 .DS_Store

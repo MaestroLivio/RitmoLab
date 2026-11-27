@@ -1,0 +1,17 @@
+{
+  "id": "/",
+  "name": "RitmoLab – Laboratorio Musicale",
+  "short_name": "RitmoLab",
+  "description": "Laboratorio musicale didattico per la scuola primaria.",
+  "lang": "it",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fff8e7",
+  "theme_color": "#fff8e7",
+  "categories": ["education", "music"],
+  "icons": [
+    { "src": "./icons/ritmolab.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

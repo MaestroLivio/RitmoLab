@@ -66,20 +66,32 @@ export class LevelManager {
       stars: scoreData.stars || 0,
       accuracy: scoreData.accuracy || 0,
       completed: scoreData.completed || false,
+      teacherPassed: scoreData.teacherPassed || false,
     };
   }
 
   recordLevelCompletion(id, { stars = 1, accuracy = 100, savedNotes = null }) {
     const prev = this.progress.scores[id] || { stars: 0, accuracy: 0 };
     this.progress.scores[id] = {
-      stars: Math.max(prev.stars, stars),
-      accuracy: Math.max(prev.accuracy, accuracy),
+      ...prev,
+      stars: Math.max(prev.stars || 0, stars),
+      accuracy: Math.max(prev.accuracy || 0, accuracy),
       completed: true,
       completedAt: new Date().toISOString(),
       savedNotes: savedNotes || prev.savedNotes,
     };
 
     // Unlock next level in sequence
+    this.unlockNextLevel(id);
+    this.saveProgress();
+  }
+
+  recordTeacherPass(id) {
+    if (!ALL_LEVELS.some(level => level.id === id)) return;
+    this.progress.scores[id] = {
+      ...this.progress.scores[id], completed: true, teacherPassed: true,
+      completedAt: new Date().toISOString(),
+    };
     this.unlockNextLevel(id);
     this.saveProgress();
   }

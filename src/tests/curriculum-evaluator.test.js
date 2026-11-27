@@ -2,6 +2,9 @@ import assert from 'assert';
 import { ALL_LEVELS, RHYTHMIC_LEVELS, MELODIC_LEVELS } from '../data/curriculum.js';
 import { RhythmEvaluator } from '../engine/RhythmEvaluator.js';
 import { LevelManager } from '../engine/LevelManager.js';
+import { REPERTOIRE } from '../data/repertoire.js';
+import { levelArrangement } from '../data/repertoireLessons.js';
+import { getMeter, toMidi } from '../engine/Transport.js';
 
 console.log('--- STARTING RITMOLAB SYSTEM INTEGRITY TESTS ---');
 
@@ -23,6 +26,26 @@ ALL_LEVELS.forEach(lvl => {
   assert(lvl.totalSteps > 0, `Level ${lvl.id} totalSteps must be positive`);
   assert(lvl.staffType, `Level ${lvl.id} must specify staffType`);
 });
+const range = [60, 62, 64, 65, 67, 69, 71, 72];
+for (const score of Object.values(REPERTOIRE)) {
+  assert.equal(score.totalSteps % getMeter(score.timeSignature).barSteps, 0, score.title);
+  assert(score.chords[0].step === 0 && score.chords.at(-1).step < score.totalSteps, score.title);
+  assert(score.notes.every(note => note.isRest || range.includes(note.midi) && note.lyric), score.title);
+}
+for (const level of ALL_LEVELS) {
+  assert(level.song.youtubeUrl && level.dynamics.length >= 2, level.id);
+  assert(level.dynamics.every((event, index) => event.step < level.totalSteps &&
+    (index === 0 || event.step > level.dynamics[index - 1].step)), level.id);
+  assert([...level.targetNotes, ...(level.targetNotesTrack2 || [])].every(note =>
+    note.step + note.duration <= level.totalSteps &&
+    (!note.pitch || range.includes(toMidi(note.pitch, note.accidental)))), level.id);
+  if (level.section !== 'rhythm') continue;
+  const orff = levelArrangement(level, 'orff');
+  assert.deepEqual(orff.targetNotes.map(({ step, duration }) => [step, duration]),
+    level.targetNotes.map(({ step, duration }) => [step, duration]), level.id);
+  assert(orff.targetNotes.filter(note => !note.isRest).every(note =>
+    ['claves', 'kick', 'cymbals', 'tambourine', 'triangle'].includes(note.sound)), level.id);
+}
 console.log('✓ All level properties validated.');
 
 // 3. Test RhythmEvaluator accuracy and ms calculation
@@ -92,6 +115,13 @@ const lm2 = new LevelManager();
 const imported = lm2.importDataFromJSON(exported);
 assert.strictEqual(imported, true, 'JSON import should succeed');
 assert.strictEqual(lm2.getLevelStatus('R1').completed, true, 'Imported progress should have R1 completed');
+lm2.recordTeacherPass('R2');
+assert.equal(lm2.getLevelStatus('R2').teacherPassed, true);
+assert.equal(lm2.getLevelStatus('R2').stars, 0);
+assert.equal(lm2.getLevelStatus('R3').unlocked, true);
+lm2.recordLevelCompletion('R2', { stars: 2, accuracy: 82 });
+assert.equal(lm2.getLevelStatus('R2').teacherPassed, true);
+assert.equal(lm2.getLevelStatus('R2').accuracy, 82);
 
 console.log('✓ LevelManager test passed: unlock, persistence and backup verified.');
 console.log('--- ALL RITMOLAB SYSTEM INTEGRITY TESTS PASSED! ---');

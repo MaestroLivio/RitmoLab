@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Music,
   Activity,
@@ -27,6 +27,7 @@ import { levelManager } from './engine/LevelManager';
 import { settingsManager } from './engine/SettingsManager';
 import { audioEngine } from './engine/AudioEngine';
 import { ALL_LEVELS } from './data/curriculum';
+import { arrangementNotes, levelArrangement } from './data/repertoireLessons';
 
 const SANDBOX = { id: 'SANDBOX', isSandbox: true, bpm: 90, accidentalsEnabled: true };
 
@@ -40,6 +41,9 @@ export default function App() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [userScoreNotes, setUserScoreNotes] = useState([]);
   const [sandboxNotes, setSandboxNotes] = useState([]);
+  const [classMode, setClassMode] = useState(false);
+  const [rhythmMode, setRhythmMode] = useState('body');
+  const [teacherMessage, setTeacherMessage] = useState('');
   const [stats, setStats] = useState(levelManager.getOverallStatistics());
 
   // Listen to settings updates
@@ -59,12 +63,16 @@ export default function App() {
   }, []);
 
   // Current level data
-  const currentLevel = levelManager.getLevelById(currentLevelId);
+  const baseLevel = levelManager.getLevelById(currentLevelId);
+  const currentLevel = useMemo(() => levelArrangement(baseLevel, rhythmMode), [baseLevel, rhythmMode]);
+  const editorNotes = useMemo(() => currentLevel.section === 'rhythm'
+    ? arrangementNotes(userScoreNotes, rhythmMode) : userScoreNotes, [currentLevel.section, userScoreNotes, rhythmMode]);
 
   // Sync level initial state
   useEffect(() => {
     if (currentLevel) {
-      setUserScoreNotes(currentLevel.targetNotes || []);
+      setUserScoreNotes(baseLevel.targetNotes || []);
+      setTeacherMessage('');
       if (currentLevel.type === 'dictation') {
         setSubMode('dictation');
       } else if (currentLevel.type === 'tap') {
@@ -80,8 +88,7 @@ export default function App() {
     const currentIdx = ALL_LEVELS.findIndex(l => l.id === currentLevelId);
     if (currentIdx < ALL_LEVELS.length - 1) {
       const nextId = ALL_LEVELS[currentIdx + 1].id;
-      levelManager.unlockLevel(nextId);
-      setCurrentLevelId(nextId);
+      if (levelManager.getLevelStatus(nextId).unlocked) setCurrentLevelId(nextId);
     }
   };
 
@@ -95,6 +102,7 @@ export default function App() {
   };
 
   const handleLevelComplete = ({ levelId, stars, accuracy, autoAdvance = true }) => {
+    if (classMode) return;
     levelManager.recordLevelCompletion(levelId, { stars, accuracy, savedNotes: userScoreNotes });
     setStats(levelManager.getOverallStatistics());
     if (autoAdvance) {
@@ -102,9 +110,17 @@ export default function App() {
     }
   };
 
+  const handleTeacherPass = () => {
+    levelManager.recordTeacherPass(currentLevelId);
+    setStats(levelManager.getOverallStatistics());
+    if (hasNext) handleNextLevel();
+    else setTeacherMessage('Ultimo livello superato con la valutazione del maestro.');
+  };
+
   const currentIdx = ALL_LEVELS.findIndex(l => l.id === currentLevelId);
   const hasPrev = currentIdx > 0;
   const hasNext = currentIdx < ALL_LEVELS.length - 1;
+  const nextUnlocked = hasNext && levelManager.getLevelStatus(ALL_LEVELS[currentIdx + 1].id).unlocked;
   const levelStatus = levelManager.getLevelStatus(currentLevelId);
 
   return (
@@ -235,9 +251,9 @@ export default function App() {
 
             <button
               onClick={handleNextLevel}
-              disabled={!hasNext}
+              disabled={!nextUnlocked || classMode}
               className={`px-3 py-1 rounded-xl border transition-all flex items-center gap-1.5 font-black text-xs ${
-                hasNext
+                nextUnlocked && !classMode
                   ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-600 shadow-sm'
                   : 'opacity-40 cursor-not-allowed text-slate-300 border-transparent bg-slate-100'
               }`}
@@ -292,8 +308,33 @@ export default function App() {
             )}
           </nav>
         </div>
-      )}
+        )}
 
+        {appMode === 'curriculum' && !showLevelSelector && (
+          <div className="lesson-toolbar" aria-label="Modalità di lavoro">
+            {currentLevel.section === 'rhythm' && <label>
+              Esecuzione
+              <select value={rhythmMode} onChange={event => {
+                audioEngine.stopPlayback();
+                setRhythmMode(event.target.value);
+              }}>
+                <option value="body">Body Percussion</option>
+                <option value="orff">Strumentario Orff</option>
+              </select>
+            </label>}
+            <label>
+              <input type="checkbox" checked={classMode} onChange={event => {
+                audioEngine.stopPlayback();
+                setClassMode(event.target.checked);
+              }} />
+              Tutta la Classe
+            </label>
+            <button type="button" className="lesson-teacher" onClick={handleTeacherPass}>
+              Superato / Avanti (Valutazione Maestro)
+            </button>
+            {teacherMessage && <span role="status">{teacherMessage}</span>}
+          </div>
+        )}
       {/* ----------------- MAIN VIEWPORT ----------------- */}
       <main className="studio-main" key={`${appMode}:${showLevelSelector}:${currentLevelId}:${subMode}`}>
         {showLevelSelector ? (
@@ -316,33 +357,36 @@ export default function App() {
         ) : subMode === 'tap' ? (
           // Rhythm Tap Game mode
           <RhythmTapGame
-            key={currentLevel.id}
+            key={`${currentLevel.id}-${rhythmMode}-${classMode}`}
             level={currentLevel}
+            classMode={classMode}
             onComplete={(res) => {
               handleLevelComplete({ ...res, autoAdvance: false });
             }}
-            onNextLevel={hasNext ? handleNextLevel : null}
+            onNextLevel={hasNext && !classMode ? handleNextLevel : null}
             onBackToEditor={() => setSubMode('editor')}
           />
         ) : subMode === 'dictation' ? (
           // Ear training Dictation game mode
           <DictationGame
-            key={currentLevel.id}
+            key={`${currentLevel.id}-${rhythmMode}-${classMode}`}
             level={currentLevel}
+            classMode={classMode}
             onComplete={(res) => {
               handleLevelComplete({ ...res, autoAdvance: false });
             }}
-            onNextLevel={hasNext ? handleNextLevel : null}
+            onNextLevel={hasNext && !classMode ? handleNextLevel : null}
             onBack={() => setSubMode('editor')}
           />
         ) : (
           // Default Workspace Editor mode
           <GridEditor
-            key={currentLevel.id}
-            initialNotes={userScoreNotes}
+            key={`${currentLevel.id}-${rhythmMode}-${classMode}`}
+            initialNotes={editorNotes}
             levelConfig={currentLevel}
+            classMode={classMode}
             onNotesChange={(newNotes) => setUserScoreNotes(newNotes)}
-            onNextLevel={hasNext ? handleNextLevel : null}
+            onNextLevel={nextUnlocked && !classMode ? handleNextLevel : null}
           />
         )}
       </main>

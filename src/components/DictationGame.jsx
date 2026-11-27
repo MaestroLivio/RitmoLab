@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Volume2, Play, CheckCircle2, XCircle, RotateCcw, ArrowRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { audioEngine } from '../engine/AudioEngine';
+import RepertoireCard from './RepertoireCard';
 
 export default function DictationGame({
   level,
   onComplete = null,
   onNextLevel = null,
   onBack = null,
+  classMode = false,
 }) {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [selectedOptionId, setSelectedOptionId] = useState(null);
@@ -65,6 +67,7 @@ export default function DictationGame({
     setIsCorrect(correct);
     setEvaluated(true);
 
+    if (classMode) return;
     if (correct) {
       audioEngine.playSuccessFanfare();
       confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 }, disableForReducedMotion: true });
@@ -106,6 +109,7 @@ export default function DictationGame({
 
       {/* Main Content */}
       <div className="exercise-body flex-1 flex flex-col items-center justify-center max-w-3xl mx-auto w-full">
+        <RepertoireCard level={level} showScore={false} />
         {/* Didactic Explanation Box */}
         <div className="w-full bg-white/90 p-4 rounded-2xl border border-purple-200 shadow-playful-sm mb-5 text-xs space-y-1.5">
           <div>
@@ -153,7 +157,7 @@ export default function DictationGame({
             if (evaluated) {
               if (opt.isCorrect) {
                 borderStyle = 'border-emerald-500 bg-emerald-50 text-emerald-900';
-              } else if (isSelected && !opt.isCorrect) {
+              } else if (isSelected && !classMode) {
                 borderStyle = 'border-rose-400 bg-rose-50 text-rose-900';
               }
             } else if (isSelected) {
@@ -172,7 +176,7 @@ export default function DictationGame({
                 {evaluated && opt.isCorrect && (
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                 )}
-                {evaluated && isSelected && !opt.isCorrect && (
+                {evaluated && isSelected && !opt.isCorrect && !classMode && (
                   <XCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
                 )}
               </button>
@@ -191,7 +195,7 @@ export default function DictationGame({
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
           >
-            Verifica Risposta
+             {classMode ? 'Mostra la soluzione' : 'Verifica Risposta'}
           </button>
         ) : (
           <div className="w-full flex items-center gap-3">

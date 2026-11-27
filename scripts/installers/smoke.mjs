@@ -210,7 +210,18 @@ try {
     window.countsSeen = [];
     const observer = new MutationObserver(() => {
       const count = Number(document.querySelector('.count-dial')?.textContent.trim());
-      if (count > 0 && window.countsSeen.at(-1) !== count) window.countsSeen.push(count);
+      if (count > 0 && window.countsSeen.at(-1) !== count) {
+        window.countsSeen.push(count);
+        const pad = findButton('BATTI IL TEMPO');
+        if (count === 4 && pad) window.padDuringCount = pad.getBoundingClientRect().top;
+        if (count === 1 && pad) {
+          const bpm = Number(document.querySelector('.exercise-header').textContent.match(/(\\d+) BPM/)[1]);
+          setTimeout(() => {
+            window.tappedDuringCount = !!document.querySelector('.count-dial');
+            pad.click();
+          }, 60000 / bpm - 120);
+        }
+      }
     });
     observer.observe(document.body, { subtree: true, childList: true, characterData: true });
     document.querySelector('.backing-toggle input').click();
@@ -218,6 +229,10 @@ try {
   }`);
   await waitFor(() => js(`window.countsSeen[0] === 4`), 'prima pulsazione del conteggio');
   await waitFor(() => js(`document.querySelector('.lesson-progress')?.value > 0`), 'trasporto dopo il conteggio');
+  await waitFor(() => js(`window.tappedDuringCount && /PERFETTO|A TEMPO/.test(document.querySelector('.exercise-feedback')?.textContent)`),
+    'anticipo valido sulla prima nota durante il conteggio');
+  assert.ok(await js(`Math.abs(findButton('BATTI IL TEMPO').getBoundingClientRect().top - window.padDuringCount) < 1`),
+    'i tasti non si spostano al cambio tra conteggio e feedback');
   if (process.env.RITMOLAB_RESPONSIVE === '1') {
     assert.deepEqual(await noHorizontalOverflow(), []);
     assert.ok(await js(`{
@@ -229,6 +244,28 @@ try {
   }
   await js(`press('Interrompi e torna')`);
   await waitFor(() => js(`!!findButton('Inizia Esercizio') && !document.querySelector('.count-dial')`), 'annullamento');
+  await js(`{
+    document.querySelector('.repertoire-score').open = true;
+    const notation = document.querySelector('.repertoire-score select');
+    notation.value = 'blocks';
+    notation.dispatchEvent(new Event('change', { bubbles: true }));
+  }`);
+  await waitFor(() => js(`!!document.querySelector('.repertoire-blocks span')`), 'partitura a blocchi');
+  await js(`{
+    const mode = document.querySelector('.lesson-toolbar select');
+    mode.value = 'orff';
+    mode.dispatchEvent(new Event('change', { bubbles: true }));
+    document.querySelector('.lesson-toolbar input').click();
+  }`);
+  await waitFor(() => js(`document.querySelector('.lesson-toolbar select').value === 'orff' &&
+    document.querySelector('.lesson-toolbar input').checked`), 'Orff e modalità classe');
+  await js(`press('Inizia Esercizio')`);
+  await waitFor(() => js(`!!document.querySelector('.exercise-class') && !!findButton('Legnetti')`),
+    'tasti Orff nella modalità classe');
+  await js(`press('Superato / Avanti');`);
+  await waitFor(() => js(`document.querySelector('.studio-level-picker')?.textContent.includes('R2')`),
+    'avanzamento del maestro durante una prova senza punteggio');
+  await js(`document.querySelector('.lesson-toolbar input').click()`);
   if (process.env.RITMOLAB_RESPONSIVE === '1') {
     await viewport([320, 640, 200]);
     await js(`document.querySelector('[aria-label="Strumentario Orff"]').click()`);
