@@ -9,6 +9,7 @@
     "build": "vite build",
     "android:prepare": "npm run build && node scripts/android/prepare.mjs",
     "android:build": "node scripts/android/build.mjs",
+    "android:debug": "node scripts/android/build.mjs --debug",
     "test": "node src/tests/curriculum-evaluator.test.js && node --test src/tests/transport.test.js src/tests/score-layout.test.js",
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"cross-env ELECTRON_DEV=true wait-on tcp:5173 && electron electron/main.cjs\"",
