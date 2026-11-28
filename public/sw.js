@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ritmolab-shell-v1';
+const CACHE_NAME = 'ritmolab-shell-v1.3.2';
 const APP_SHELL = ['./', './manifest.webmanifest', './icons/ritmolab.svg'];
 
 self.addEventListener('install', event => {
