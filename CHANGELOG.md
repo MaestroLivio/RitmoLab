@@ -22,3 +22,7 @@ Installer disponibili: **Windows x64** e **macOS Apple Silicon (arm64)**. Per gl
 - Interfaccia adattata a telefoni, tablet e schermi desktop; PWA installabile e funzionamento offline.
 - App Android con WebView sicura e risorse audio incluse per l’uso offline; supporto all’installazione su Android e ChromeOS.
 - Distribuzione desktop aggiornata per macOS Apple Silicon (arm64) e Windows x64.
+## RitmoLab 1.3.1
+
+- Corretto il download dell’aggiornamento automatico desktop: `Session.downloadURL()` di Electron non restituisce una Promise.
+- Aggiunto un test di regressione per il download dell’installer.

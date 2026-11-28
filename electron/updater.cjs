@@ -157,10 +157,14 @@ function downloadAndInstall() {
     };
 
     ses.on('will-download', onWillDownload);
-    ses.downloadURL(latestInfo.url).catch((err) => {
+    try {
+      // Electron's Session.downloadURL() returns void (the outcome arrives
+      // through `will-download` and DownloadItem events), not a Promise.
+      ses.downloadURL(latestInfo.url);
+    } catch (err) {
       ses.removeListener('will-download', onWillDownload);
       reject(err);
-    });
+    }
   });
 }
 
