@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { EventEmitter } from 'node:events';
+import path from 'node:path';
 
 const require = createRequire(import.meta.url);
 const Module = require('node:module');
@@ -68,7 +69,10 @@ test('updater handles Electron Session.downloadURL returning void', async () => 
     assert.equal(update.latestVersion, '1.3.0');
 
     const result = await handlers.get(updater.IPC.INSTALL)();
-    assert.deepEqual(result, { ok: true, filePath: '/tmp/RitmoLab-1.3.0-macOS-arm64.dmg' });
+    assert.deepEqual(result, {
+      ok: true,
+      filePath: path.join('/tmp', 'RitmoLab-1.3.0-macOS-arm64.dmg'),
+    });
     assert.equal(item.savePath, result.filePath);
   } finally {
     Module._load = originalLoad;
