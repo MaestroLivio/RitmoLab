@@ -219,7 +219,7 @@ try {
           setTimeout(() => {
             window.tappedDuringCount = !!document.querySelector('.count-dial');
             pad.click();
-          }, 60000 / bpm - 250);
+          }, 60000 / bpm - 50);
         }
       }
     });
