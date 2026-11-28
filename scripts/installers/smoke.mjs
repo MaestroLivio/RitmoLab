@@ -17,8 +17,8 @@ await new Promise(resolve => listener.listen(0, '127.0.0.1', resolve));
 const port = listener.address().port;
 await new Promise(resolve => listener.close(resolve));
 const child = spawn(resolve(binary), [`--remote-debugging-port=${port}`, `--user-data-dir=${profile}`,
-  '--disable-background-networking', ...(browser ? ['--headless', '--autoplay-policy=no-user-gesture-required',
-    'http://localhost:5173/'] : [])],
+  '--disable-background-networking', '--autoplay-policy=no-user-gesture-required',
+  ...(browser ? ['--headless', 'http://localhost:5173/'] : [])],
   { stdio: ['ignore', 'ignore', 'inherit'] });
 child.on('error', error => console.error(error));
 
