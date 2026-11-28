@@ -20,3 +20,15 @@ test('the same global step stays visible after resizing and while following play
     assert.ok(layout.start <= 93.75 && 93.75 < layout.start + layout.steps);
   }
 });
+
+test('playback scrolls continuously while keeping the playhead ahead of the notes', () => {
+  const score = { width: 850, indent: 86, barSteps: 16, bars: 32, follow: true };
+  const before = scorePage({ ...score, anchorStep: 31.25 });
+  const after = scorePage({ ...score, anchorStep: 31.5 });
+
+  assert.ok(after.start > before.start);
+  assert.ok(after.start - before.start <= 0.25);
+  assert.ok(after.start <= 31.5 && 31.5 < after.start + after.steps);
+  assert.ok(31.5 - after.start >= after.steps * 0.29);
+  assert.ok(31.5 - after.start <= after.steps * 0.31);
+});

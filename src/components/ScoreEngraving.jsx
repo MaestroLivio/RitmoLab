@@ -2,7 +2,7 @@ import { StaffGlyph } from './StaffGlyph';
 import { groupBeams, splitNotation } from '../engine/Notation';
 import { getMeter } from '../engine/Transport';
 
-export function ScoreStaff({ rows, rowHeight, stepWidth, indent, totalSteps, signature, treble }) {
+export function ScoreStaff({ rows, rowHeight, stepWidth, indent, totalSteps, startStep = 0, signature, treble }) {
   const width = indent + totalSteps * stepWidth;
   const { barSteps } = getMeter(signature);
   const [top, bottom] = signature.split('/');
@@ -20,9 +20,11 @@ export function ScoreStaff({ rows, rowHeight, stepWidth, indent, totalSteps, sig
         const middle = (ys[0] + ys.at(-1)) / 2;
         return <g key={voice} stroke="#667398" strokeWidth="1">
           {ys.map(y => <path key={y} d={`M0 ${y}H${width - 1}`} />)}
-          {Array.from({ length: Math.ceil(totalSteps / barSteps) }, (_, i) => {
-            const x = Math.min(width - 2, indent + (i + 1) * barSteps * stepWidth);
-            return <path key={i} d={`M${x} ${ys[0] - (ys.length === 1 ? 11 : 0)}V${ys.at(-1) + (ys.length === 1 ? 11 : 0)}`}
+          {Array.from({ length: Math.ceil((startStep + totalSteps) / barSteps) - Math.floor(startStep / barSteps) }, (_, i) => {
+            const barStep = (Math.floor(startStep / barSteps) + i + 1) * barSteps;
+            if (barStep > startStep + totalSteps) return null;
+            const x = Math.min(width - 2, indent + (barStep - startStep) * stepWidth);
+            return <path key={barStep} d={`M${x} ${ys[0] - (ys.length === 1 ? 11 : 0)}V${ys.at(-1) + (ys.length === 1 ? 11 : 0)}`}
               stroke="#25304a" strokeWidth={x >= width - 2 ? 2.5 : 1.3} />;
           })}
           {treble && <>

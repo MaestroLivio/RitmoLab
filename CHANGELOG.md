@@ -26,3 +26,7 @@ Installer disponibili: **Windows x64** e **macOS Apple Silicon (arm64)**. Per gl
 
 - Corretto il download dell’aggiornamento automatico desktop: `Session.downloadURL()` di Electron non restituisce una Promise.
 - Aggiunto un test di regressione per il download dell’installer.
+## RitmoLab 1.3.2
+
+- Durante l’esecuzione, la partitura scorre in modo continuo mantenendo le note successive visibili.
+- Accordi, dinamiche e testo restano allineati alle note durante lo scorrimento, per poter suonare e cantare insieme alla musica.

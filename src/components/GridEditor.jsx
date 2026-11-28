@@ -170,7 +170,7 @@ export default function GridEditor({
     : viewMode === 'conventional' ? 18 : 0;
   const playing = isPlaying || isPlayingTarget;
   const layout = scorePage({ width: scoreWidth, indent: staffIndent, barSteps: sixteenthsPerBar, bars: totalBars,
-    anchorStep: playing ? playheadPosition : pageAnchor });
+    anchorStep: playing ? playheadPosition : pageAnchor, follow: playing });
   const { stepWidth, start: pageStart, steps: pageSteps, visibleBars, firstBar } = layout;
   const pageEnd = pageStart + pageSteps;
   const pageWidth = staffIndent + pageSteps * stepWidth;
@@ -1144,7 +1144,7 @@ export default function GridEditor({
               <div
                 key={`bar-head-${barIdx}`}
                  className="score-bar-title absolute top-0 bottom-0 border-r border-slate-700 flex items-center font-black text-amber-900"
-                style={{ left: `${staffIndent + barIdx * sixteenthsPerBar * stepWidth}px`, width: `${sixteenthsPerBar * stepWidth}px` }}
+                style={{ left: `${staffIndent + (firstBar + barIdx) * sixteenthsPerBar * stepWidth - pageStart * stepWidth}px`, width: `${sixteenthsPerBar * stepWidth}px` }}
               >
                  <span>Battuta {firstBar + barIdx + 1}</span>
                  <span className="score-bar-meter ml-auto text-[10px] text-amber-700/70 font-bold">{timeSignature}</span>
@@ -1167,7 +1167,7 @@ export default function GridEditor({
           >
             {viewMode === 'conventional' ? <>
               <ScoreStaff rows={activeRows} rowHeight={rowHeight} stepWidth={stepWidth} indent={staffIndent}
-                totalSteps={pageSteps} signature={timeSignature} treble={showClef} />
+                totalSteps={pageSteps} startStep={pageStart} signature={timeSignature} treble={showClef} />
               <ScoreNotes rows={activeRows} notes={notes} rowHeight={rowHeight} stepWidth={stepWidth}
                 indent={staffIndent} totalSteps={totalSteps} startStep={pageStart} visibleSteps={pageSteps}
                 signature={timeSignature} selectedId={selectedNoteId} />
