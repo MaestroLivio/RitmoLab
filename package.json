@@ -1,6 +1,6 @@
 {
   "name": "ritmolab",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "RitmoLab - Laboratorio Desktop per l'Educazione Musicale nella Scuola Primaria",
   "main": "electron/main.cjs",
   "type": "module",

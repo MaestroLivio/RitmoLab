@@ -323,9 +323,12 @@
   .score-palette { border: 0; padding-inline: 0; }
   .score-cursor-status { margin-inline-start: 0; }
 }
-@media (max-width: 30em), (max-height: 26em) {
+@media (max-width: 30em), (max-height: 26em), (pointer: coarse) {
+  html, body, #root { block-size: auto; min-block-size: 100%; }
+  body { overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  #root { block-size: auto; }
   .studio-shell { block-size: auto; min-block-size: 100dvh; overflow: visible; }
-  .studio-main { overflow: visible; }
+  .studio-main { flex: 0 0 auto; overflow: visible; }
   .studio-main > .studio-panel { min-height: 0; }
 }
 @media (max-width: 30em) {
@@ -379,6 +382,7 @@
   .backing-toggle small { display: none; }
 }
 @media (pointer: coarse) {
+  .studio-shell button, .studio-shell select { min-inline-size: 44px; min-block-size: 44px; }
   .studio-header button, .studio-lesson-nav button, .score-toolbar button, .score-pages button,
   .score-toolbar select, .score-pages select, .exercise-pads button, .exercise-tap { min-height: 44px; }
 }

@@ -30,3 +30,8 @@ Installer disponibili: **Windows x64** e **macOS Apple Silicon (arm64)**. Per gl
 
 - Durante l’esecuzione, la partitura scorre in modo continuo mantenendo le note successive visibili.
 - Accordi, dinamiche e testo restano allineati alle note durante lo scorrimento, per poter suonare e cantare insieme alla musica.
+
+## RitmoLab 1.3.3
+
+- Migliorato lo scorrimento verticale degli esercizi su tablet e dispositivi touch, inclusi iPad in Safari.
+- Aumentata l’area minima dei controlli touch per renderli più facili da usare.
